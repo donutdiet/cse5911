@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Lesson Plans - Admin</title>
+</head>
+<body>
+    <div>
+        <!-- Navigation -->
+        <nav>
+            <a href="home-admin.html">Dashboard</a> |
+            <a href="groups-admin.html">Groups</a> |
+            <a href="lesson-plans.html">Lesson Plans</a> |
+            <a href="locations.html">Locations</a> |
+            <a href="matches-admin.html">Matches</a>
+        </nav>
+
+        <hr>
+
+        <h1>Manage Lesson Plans</h1>
+        <p>Create and organize lesson content for study groups.</p>
+
+        <hr>
+
+        <!-- Add New Lesson Plan -->
+        <section>
+            <h2>Add New Lesson Plan</h2>
+            <form>
+                <div>
+                    <label for="title">Lesson Title:</label>
+                    <br>
+                    <input type="text" id="title" name="title" placeholder="e.g., Chapter 5 - Nervous System" size="40">
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="description">Description:</label>
+                    <br>
+                    <textarea id="description" name="description" rows="3" cols="40" placeholder="Brief overview of the lesson..."></textarea>
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="objectives">Learning Objectives:</label>
+                    <br>
+                    <textarea id="objectives" name="objectives" rows="3" cols="40" placeholder="What students should learn..."></textarea>
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="duration">Estimated Duration (minutes):</label>
+                    <br>
+                    <input type="number" id="duration" name="duration" value="60">
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="materials">Materials/Resources:</label>
+                    <br>
+                    <textarea id="materials" name="materials" rows="2" cols="40" placeholder="Textbook pages, handouts, links..."></textarea>
+                </div>
+
+                <br>
+
+                <button type="submit">Add Lesson Plan</button>
+            </form>
+        </section>
+
+        <hr>
+
+        <!-- Existing Lesson Plans -->
+        <section>
+            <h2>Existing Lesson Plans</h2>
+
+            <div>
+                <h3>Chapter 1 - Introduction to Anatomy</h3>
+                <p><strong>Description:</strong> Overview of anatomical terminology and body organization</p>
+                <p><strong>Objectives:</strong> Learn directional terms, body planes, and organ systems</p>
+                <p><strong>Duration:</strong> 60 minutes</p>
+                <p><strong>Materials:</strong> Textbook Ch. 1, Anatomy diagram handout</p>
+                <button>Edit</button>
+                <button>Delete</button>
+            </div>
+
+            <hr>
+
+            <div>
+                <h3>Chapter 2 - Cells and Tissues</h3>
+                <p><strong>Description:</strong> Cell structure and the four tissue types</p>
+                <p><strong>Objectives:</strong> Identify cell organelles, distinguish tissue types</p>
+                <p><strong>Duration:</strong> 75 minutes</p>
+                <p><strong>Materials:</strong> Textbook Ch. 2, Microscope slides</p>
+                <button>Edit</button>
+                <button>Delete</button>
+            </div>
+
+            <hr>
+
+            <div>
+                <h3>Chapter 3 - Skeletal System</h3>
+                <p><strong>Description:</strong> Bone structure, types, and major bones of the body</p>
+                <p><strong>Objectives:</strong> Identify major bones, understand bone growth</p>
+                <p><strong>Duration:</strong> 90 minutes</p>
+                <p><strong>Materials:</strong> Textbook Ch. 3, Skeleton model, Bone labeling worksheet</p>
+                <button>Edit</button>
+                <button>Delete</button>
+            </div>
+
+            <hr>
+
+            <div>
+                <h3>Chapter 4 - Muscular System</h3>
+                <p><strong>Description:</strong> Muscle types, major muscles, and muscle contraction</p>
+                <p><strong>Objectives:</strong> Identify muscle types and major muscles, understand contraction</p>
+                <p><strong>Duration:</strong> 90 minutes</p>
+                <p><strong>Materials:</strong> Textbook Ch. 4, Muscle diagram</p>
+                <button>Edit</button>
+                <button>Delete</button>
+            </div>
+
+            <hr>
+
+            <div>
+                <h3>Chapter 5 - Nervous System</h3>
+                <p><strong>Description:</strong> Neuron structure, brain regions, and nerve pathways</p>
+                <p><strong>Objectives:</strong> Understand neuron function, identify brain structures</p>
+                <p><strong>Duration:</strong> 90 minutes</p>
+                <p><strong>Materials:</strong> Textbook Ch. 5, Brain model, Neuron diagram</p>
+                <button>Edit</button>
+                <button>Delete</button>
+            </div>
+        </section>
+
+        <br>
+        <a href="home-admin.html">← Back to Dashboard</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Locations - Admin</title>
+</head>
+<body>
+    <div>
+        <!-- Navigation -->
+        <nav>
+            <a href="home-admin.html">Dashboard</a> |
+            <a href="groups-admin.html">Groups</a> |
+            <a href="lesson-plans.html">Lesson Plans</a> |
+            <a href="locations.html">Locations</a> |
+            <a href="matches-admin.html">Matches</a>
+        </nav>
+
+        <hr>
+
+        <h1>Manage Locations</h1>
+        <p>Add and manage study locations for in-person sessions.</p>
+
+        <hr>
+
+        <!-- Add New Location -->
+        <section>
+            <h2>Add New Location</h2>
+            <form>
+                <div>
+                    <label for="building">Building Name:</label>
+                    <br>
+                    <input type="text" id="building" name="building" placeholder="e.g., Thompson Library" size="30">
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="room">Room Number:</label>
+                    <br>
+                    <input type="text" id="room" name="room" placeholder="e.g., 210" size="15">
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="capacity">Capacity (optional):</label>
+                    <br>
+                    <input type="number" id="capacity" name="capacity" placeholder="e.g., 8">
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="notes">Notes (optional):</label>
+                    <br>
+                    <textarea id="notes" name="notes" rows="2" cols="30" placeholder="Whiteboard available, quiet area, etc."></textarea>
+                </div>
+
+                <br>
+
+                <button type="submit">Add Location</button>
+            </form>
+        </section>
+
+        <hr>
+
+        <!-- Existing Locations -->
+        <section>
+            <h2>Existing Locations</h2>
+
+            <table border="1" cellpadding="10" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Building</th>
+                        <th>Room</th>
+                        <th>Capacity</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Thompson Library</td>
+                        <td>210</td>
+                        <td>6</td>
+                        <td>Quiet study room, whiteboard</td>
+                        <td>
+                            <button>Edit</button>
+                            <button>Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Thompson Library</td>
+                        <td>315</td>
+                        <td>8</td>
+                        <td>Group study room, large table</td>
+                        <td>
+                            <button>Edit</button>
+                            <button>Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Science & Engineering Library</td>
+                        <td>102</td>
+                        <td>4</td>
+                        <td>Small room, near anatomy section</td>
+                        <td>
+                            <button>Edit</button>
+                            <button>Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Health Sciences Library</td>
+                        <td>405</td>
+                        <td>10</td>
+                        <td>Large conference room, projector</td>
+                        <td>
+                            <button>Edit</button>
+                            <button>Delete</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Biological Sciences Building</td>
+                        <td>120</td>
+                        <td>6</td>
+                        <td>Near lab, has skeleton model</td>
+                        <td>
+                            <button>Edit</button>
+                            <button>Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <br>
+        <a href="home-admin.html">← Back to Dashboard</a>
+    </div>
+</body>
+</html>

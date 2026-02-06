@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Study Group Organizer</title>
+</head>
+<body>
+    <div>
+        <h1>Sign Up</h1>
+
+        <form>
+            <div>
+                <label for="name">Name:</label>
+                <br>
+                <input type="text" id="name" name="name" required>
+            </div>
+
+            <br>
+
+            <div>
+                <label for="email">Email:</label>
+                <br>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <br>
+
+            <div>
+                <label for="password">Password:</label>
+                <br>
+                <input type="password" id="password" name="password" required minlength="6">
+            </div>
+
+            <br>
+
+            <fieldset>
+                <legend><strong>I am signing up as:</strong></legend>
+                
+                <div>
+                    <input type="radio" id="student" name="userType" value="student">
+                    <label for="student">Student</label>
+                </div>
+
+                <div>
+                    <input type="radio" id="admin" name="userType" value="admin">
+                    <label for="admin">Admin</label>
+                </div>
+
+                <!-- Admin Key section (shows when admin is selected) -->
+                <div id="adminKeySection">
+                    <br>
+                    <label for="adminKey"><strong>Admin Access Code:</strong></label>
+                    <br>
+                    <input type="password" id="adminKey" name="adminKey" placeholder="Enter admin key">
+                    <br>
+                </div>
+
+                <!-- Student info (shows when student is selected) -->
+                <div id="studentInfoSection">
+                    <br>
+                    <small>After signup, you'll be asked to set your availability and meeting preference.</small>
+                </div>
+            </fieldset>
+
+            <br>
+
+            <!-- Error message would show here -->
+            <!-- <p style="color: red;">Please select whether you are an admin or student</p> -->
+
+            <button type="submit">Sign Up</button>
+        </form>
+
+        <br>
+        <p>
+            Already have an account? <a href="login.html">Log in</a>
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View All Matches - Admin</title>
+</head>
+<body>
+    <div>
+        <!-- Navigation -->
+        <nav>
+            <a href="home-admin.html">Dashboard</a> |
+            <a href="groups-admin.html">Groups</a> |
+            <a href="lesson-plans.html">Lesson Plans</a> |
+            <a href="locations.html">Locations</a> |
+            <a href="matches-admin.html">Matches</a>
+        </nav>
+
+        <hr>
+
+        <h1>Student Availability Matches</h1>
+        <p>View which students have overlapping availability to help form groups.</p>
+
+        <hr>
+
+        <!-- Filter -->
+        <section>
+            <h3>Filter Students</h3>
+            <label>
+                Meeting Preference:
+                <select>
+                    <option value="all">All</option>
+                    <option value="in-person">In-Person Only</option>
+                    <option value="online">Online Only</option>
+                </select>
+            </label>
+            
+            <label>
+                Minimum Overlap:
+                <select>
+                    <option value="1">1+ hours</option>
+                    <option value="2" selected>2+ hours</option>
+                    <option value="3">3+ hours</option>
+                    <option value="4">4+ hours</option>
+                </select>
+            </label>
+
+            <label>
+                Group Status:
+                <select>
+                    <option value="all">All Students</option>
+                    <option value="unassigned">Unassigned Only</option>
+                    <option value="assigned">Assigned Only</option>
+                </select>
+            </label>
+
+            <button>Apply Filters</button>
+        </section>
+
+        <hr>
+
+        <!-- Unassigned Students -->
+        <section>
+            <h2>Unassigned Students (3)</h2>
+            <p>These students need to be placed in a group.</p>
+
+            <div>
+                <h3>Taylor Smith</h3>
+                <p>taylor.smith@osu.edu</p>
+                <p><strong>Preference:</strong> In-Person</p>
+                <p><strong>Available:</strong> Mon 2-5 PM, Wed 2-5 PM, Fri 10 AM-12 PM</p>
+                <p><strong>Best matches:</strong> Morgan (6 hrs), Casey (5 hrs), Riley (4 hrs)</p>
+                <button>Assign to Group</button>
+            </div>
+
+            <hr>
+
+            <div>
+                <h3>Morgan Lee</h3>
+                <p>morgan.lee@osu.edu</p>
+                <p><strong>Preference:</strong> In-Person</p>
+                <p><strong>Available:</strong> Mon 2-5 PM, Wed 1-4 PM, Sat 10 AM-1 PM</p>
+                <p><strong>Best matches:</strong> Taylor (6 hrs), Casey (4 hrs)</p>
+                <button>Assign to Group</button>
+            </div>
+
+            <hr>
+
+            <div>
+                <h3>Casey Brown</h3>
+                <p>casey.brown@osu.edu</p>
+                <p><strong>Preference:</strong> Online</p>
+                <p><strong>Available:</strong> Tue 6-9 PM, Thu 6-9 PM, Sun 2-5 PM</p>
+                <p><strong>Best matches:</strong> Riley (5 hrs), Jordan (3 hrs)</p>
+                <button>Assign to Group</button>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- All Student Matches -->
+        <section>
+            <h2>All Student Matches</h2>
+
+            <table border="1" cellpadding="10" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Preference</th>
+                        <th>Available Hours</th>
+                        <th>Current Group</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Alex Johnson</td>
+                        <td>In-Person</td>
+                        <td>12 hrs/week</td>
+                        <td>Group 3</td>
+                        <td><button>View</button> <button>Reassign</button></td>
+                    </tr>
+                    <tr>
+                        <td>Sarah Johnson</td>
+                        <td>In-Person</td>
+                        <td>10 hrs/week</td>
+                        <td>Group 3</td>
+                        <td><button>View</button> <button>Reassign</button></td>
+                    </tr>
+                    <tr>
+                        <td>Mike Chen</td>
+                        <td>In-Person</td>
+                        <td>8 hrs/week</td>
+                        <td>Group 3</td>
+                        <td><button>View</button> <button>Reassign</button></td>
+                    </tr>
+                    <tr>
+                        <td>Jessica Park</td>
+                        <td>In-Person</td>
+                        <td>6 hrs/week</td>
+                        <td>Group 3</td>
+                        <td><button>View</button> <button>Reassign</button></td>
+                    </tr>
+                    <tr>
+                        <td>Jordan Davis</td>
+                        <td>Online</td>
+                        <td>9 hrs/week</td>
+                        <td>Group 2</td>
+                        <td><button>View</button> <button>Reassign</button></td>
+                    </tr>
+                    <tr>
+                        <td>Taylor Smith</td>
+                        <td>In-Person</td>
+                        <td>9 hrs/week</td>
+                        <td>Unassigned</td>
+                        <td><button>View</button> <button>Assign</button></td>
+                    </tr>
+                    <tr>
+                        <td>Morgan Lee</td>
+                        <td>In-Person</td>
+                        <td>10 hrs/week</td>
+                        <td>Unassigned</td>
+                        <td><button>View</button> <button>Assign</button></td>
+                    </tr>
+                    <tr>
+                        <td>Casey Brown</td>
+                        <td>Online</td>
+                        <td>9 hrs/week</td>
+                        <td>Unassigned</td>
+                        <td><button>View</button> <button>Assign</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <br>
+        <a href="home-admin.html">← Back to Dashboard</a>
+    </div>
+</body>
+</html>

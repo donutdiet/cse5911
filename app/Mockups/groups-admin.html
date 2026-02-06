@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Groups - Admin</title>
+</head>
+<body>
+    <div>
+        <!-- Navigation -->
+        <nav>
+            <a href="home-admin.html">Dashboard</a> |
+            <a href="groups-admin.html">Groups</a> |
+            <a href="lesson-plans.html">Lesson Plans</a> |
+            <a href="locations.html">Locations</a> |
+            <a href="matches-admin.html">Matches</a>
+        </nav>
+
+        <hr>
+
+        <h1>Manage Groups</h1>
+        <p>Create, edit, and manage study groups.</p>
+
+        <hr>
+
+        <!-- Create New Group -->
+        <section>
+            <h2>Create New Group</h2>
+            <form>
+                <div>
+                    <label for="groupName">Group Name:</label>
+                    <br>
+                    <input type="text" id="groupName" name="groupName" placeholder="e.g., Anatomy Lab Group 4" size="30">
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="meetingPref">Meeting Type:</label>
+                    <br>
+                    <select id="meetingPref" name="meetingPref">
+                        <option value="in-person">In-Person</option>
+                        <option value="online">Online</option>
+                    </select>
+                </div>
+
+                <br>
+
+                <div>
+                    <label for="location">Location (for in-person):</label>
+                    <br>
+                    <select id="location" name="location">
+                        <option value="">Select a location...</option>
+                        <option value="thompson-210">Thompson Library - Room 210</option>
+                        <option value="thompson-315">Thompson Library - Room 315</option>
+                        <option value="sel-102">Science & Engineering Library - Room 102</option>
+                        <option value="hsl-405">Health Sciences Library - Room 405</option>
+                        <option value="bio-120">Biological Sciences Building - Room 120</option>
+                    </select>
+                </div>
+
+                <br>
+
+                <button type="submit">Create Group</button>
+            </form>
+        </section>
+
+        <hr>
+
+        <!-- Existing Groups -->
+        <section>
+            <h2>Existing Groups</h2>
+
+            <!-- Group 1 -->
+            <div>
+                <h3>Anatomy Lab Group 1</h3>
+                <p><strong>Members:</strong> Taylor, Morgan, Casey, Riley</p>
+                <p><strong>Meeting Type:</strong> In-Person</p>
+                <p><strong>Location:</strong> Thompson Library - Room 315</p>
+                <p><strong>Next Session:</strong> Wednesday, Feb 5 at 3:00 PM</p>
+                <p><strong>Attendance:</strong> 4/4 confirmed</p>
+                <div>
+                    <button>Edit Group</button>
+                    <button>Add Member</button>
+                    <button>Remove Member</button>
+                    <button>Delete Group</button>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Group 2 -->
+            <div>
+                <h3>Anatomy Lab Group 2</h3>
+                <p><strong>Members:</strong> Jordan, Avery, Quinn</p>
+                <p><strong>Meeting Type:</strong> Online</p>
+                <p><strong>Location:</strong> Zoom (link sent via email)</p>
+                <p><strong>Next Session:</strong> Thursday, Feb 6 at 2:00 PM</p>
+                <p><strong>Attendance:</strong> 2/3 confirmed, 1 pending</p>
+                <div>
+                    <button>Edit Group</button>
+                    <button>Add Member</button>
+                    <button>Remove Member</button>
+                    <button>Delete Group</button>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Group 3 -->
+            <div>
+                <h3>Anatomy Lab Group 3</h3>
+                <p><strong>Members:</strong> Alex, Sarah, Mike, Jessica</p>
+                <p><strong>Meeting Type:</strong> In-Person</p>
+                <p><strong>Location:</strong> Thompson Library - Room 210</p>
+                <p><strong>Next Session:</strong> Thursday, Feb 6 at 4:00 PM</p>
+                <p><strong>Attendance:</strong> 3/4 confirmed, 1 pending</p>
+                <div>
+                    <button>Edit Group</button>
+                    <button>Add Member</button>
+                    <button>Remove Member</button>
+                    <button>Delete Group</button>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Pending Switch Requests -->
+            <h3>Pending Group Switch Requests</h3>
+            <ul>
+                <li>
+                    <strong>Alex (Group 3)</strong> requested a switch
+                    <br>Reason: Schedule changed, can't meet Thursdays
+                    <br>
+                    <button>Approve</button>
+                    <button>Deny</button>
+                    <button>View Details</button>
+                </li>
+            </ul>
+        </section>
+
+        <br>
+        <a href="home-admin.html">← Back to Dashboard</a>
+    </div>
+</body>
+</html>
