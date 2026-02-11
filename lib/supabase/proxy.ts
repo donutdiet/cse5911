@@ -38,13 +38,16 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  // Should probably change this to checking if the path doesn't start with /student or /admin in the future
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/signup") &&
+    !request.nextUrl.pathname.startsWith("/sign-up") &&
     !request.nextUrl.pathname.startsWith("/forgot-password") &&
-    !request.nextUrl.pathname.startsWith("/update-password")
+    !request.nextUrl.pathname.startsWith("/update-password") &&
+    !request.nextUrl.pathname.startsWith("/sign-up-success") &&
+    !request.nextUrl.pathname.startsWith("/confirm")
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
