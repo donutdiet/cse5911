@@ -38,32 +38,42 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // Should probably change this to checking if the path doesn't start with /student or /admin in the future
+  const pathname = request.nextUrl.pathname;
+
+  // Redirect non-logged in users away from protected routes
   if (
-    request.nextUrl.pathname !== "/" &&
+    pathname !== "/" &&
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/sign-up") &&
-    !request.nextUrl.pathname.startsWith("/forgot-password") &&
-    !request.nextUrl.pathname.startsWith("/update-password") &&
-    !request.nextUrl.pathname.startsWith("/sign-up-success") &&
-    !request.nextUrl.pathname.startsWith("/confirm")
+    (pathname.startsWith("/student") || pathname.startsWith("/admin"))
   ) {
-    // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   // Redirect logged-in users away from auth pages
-  if (
-    user &&
-    (request.nextUrl.pathname.startsWith("/login") ||
-      request.nextUrl.pathname.startsWith("/signup"))
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/group";
-    return NextResponse.redirect(url);
+  if (user) {
+    const { data: profile, error: profileError } = await supabase
+      .from("profile")
+      .select("*")
+      .eq("user_id", user.sub)
+      .single();
+
+    const role = profile?.role ?? "student";
+    const dashboard = role === "admin" ? "/admin" : "/student";
+
+    if (pathname.startsWith("/login") || pathname.startsWith("/sign-up")) {
+      const url = request.nextUrl.clone();
+      url.pathname = dashboard;
+      return NextResponse.redirect(url);
+    }
+
+    // Block students from accessing /admin
+    if (role !== "admin" && pathname.startsWith("/admin")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/student";
+      return NextResponse.redirect(url);
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
