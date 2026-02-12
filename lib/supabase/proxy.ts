@@ -59,6 +59,10 @@ export async function updateSession(request: NextRequest) {
       .eq("user_id", user.sub)
       .single();
 
+    if (profileError) {
+      console.error("Failed to fetch profile:", profileError.message);
+    }
+
     const role = profile?.role ?? "student";
     const dashboard = role === "admin" ? "/admin" : "/student";
 
