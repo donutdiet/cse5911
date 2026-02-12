@@ -13,7 +13,7 @@ export default function StudentLayout({
       <nav className="w-full h-16 px-6 flex items-center">
         <Link href="/student">
           <span className="font-semibold text-lg">AnatWithMe</span>
-        </Link>{" "}
+        </Link>
         <div className="ml-auto flex items-center gap-4">
           <StudentNavbar />
           <Suspense>
