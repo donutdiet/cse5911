@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="min-h-screen flex flex-col">
       <nav className="w-full h-16 px-6 flex items-center justify-between">
-        <span className="font-semibold text-lg">Anatomy Study Groups</span>
+        <span className="font-semibold text-lg">AnatWtihMe</span>
         <Suspense>
           <AuthButton />
         </Suspense>
