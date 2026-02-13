@@ -1,4 +1,4 @@
-export default function StudentPage() {
+export default function RosterPage() {
   return (
     <div>
       <h1>Roster Page</h1>

@@ -1,4 +1,4 @@
-export default function StudentPage() {
+export default function AdminPage() {
   return (
     <div>
       <h1>Admin Page</h1>

@@ -1,4 +1,4 @@
-export default function StudentPage() {
+export default function GroupPage() {
   return (
     <div>
       <h1>Group Page</h1>

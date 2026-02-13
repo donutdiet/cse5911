@@ -1,4 +1,4 @@
-export default function StudentPage() {
+export default function AvailabilityPage() {
   return (
     <div>
       <h1>Availability Page</h1>
