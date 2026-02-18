@@ -13,7 +13,7 @@ export default function Home() {
         </Suspense>
       </nav>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-10 pb-20 pt-14">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-10 pb-20 pt-10">
         <div className="max-w-3xl space-y-5">
           <h1 className="text-balance text-4xl font-bold leading-tight">
             Anatomy class study groups, all in one place.
