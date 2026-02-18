@@ -1,6 +1,6 @@
 import { AuthButton } from "@/components/auth/auth-button";
 import { StudentNavbar } from "@/components/student/student-navbar";
-import Link from "next/link";
+import { AppBrand } from "@/components/layout/app-brand";
 import { Suspense } from "react";
 
 export default function StudentLayout({
@@ -10,10 +10,8 @@ export default function StudentLayout({
 }) {
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="w-full h-16 px-6 flex items-center">
-        <Link href="/student">
-          <span className="font-semibold text-lg">AnatWithMe</span>
-        </Link>
+      <nav className="w-full h-16 flex items-center">
+        <AppBrand />
         <div className="ml-auto flex items-center gap-4">
           <StudentNavbar />
           <Suspense>

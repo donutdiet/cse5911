@@ -14,7 +14,7 @@ export function LogoutButton() {
   };
 
   return (
-    <Button onClick={logout} className="cursor-pointer">
+    <Button onClick={logout} variant="outline" className="cursor-pointer">
       Logout
     </Button>
   );

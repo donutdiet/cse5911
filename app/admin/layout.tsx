@@ -1,7 +1,7 @@
 import { AuthButton } from "@/components/auth/auth-button";
 import { AdminNavbar } from "@/components/admin/admin-navbar";
+import { AppBrand } from "@/components/layout/app-brand";
 import { Suspense } from "react";
-import Link from "next/link";
 
 export default function AdminLayout({
   children,
@@ -10,10 +10,8 @@ export default function AdminLayout({
 }) {
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="w-full h-16 px-6 flex items-center">
-        <Link href="/admin">
-          <span className="font-semibold text-lg">AnatWithMe</span>
-        </Link>
+      <nav className="w-full h-16 flex items-center">
+        <AppBrand />
         <div className="ml-auto flex items-center gap-4">
           <AdminNavbar />
           <Suspense>
@@ -22,7 +20,7 @@ export default function AdminLayout({
         </div>
       </nav>
 
-      <div className="flex-1 flex items-center justify-center">{children}</div>
+      <div className="flex-1 flex justify-center py-6">{children}</div>
     </main>
   );
 }
