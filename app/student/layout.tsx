@@ -10,7 +10,7 @@ export default function StudentLayout({
 }) {
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="w-full h-16 px-6 flex items-center">
+      <nav className="w-full h-16 flex items-center">
         <Link href="/student">
           <span className="font-semibold text-lg">AnatWithMe</span>
         </Link>

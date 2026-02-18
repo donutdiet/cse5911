@@ -16,7 +16,7 @@ export default async function RosterPage() {
   const roster = profiles ?? [];
 
   return (
-    <div className="w-full max-w-6xl space-y-2">
+    <div className="w-full max-w-7xl space-y-2">
       <div className="flex items-baseline gap-3">
         <h1 className="text-xl font-semibold">Student Roster</h1>
         <p className="text-muted-foreground text-sm">

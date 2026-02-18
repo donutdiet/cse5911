@@ -10,7 +10,7 @@ export default function AdminLayout({
 }) {
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="w-full h-16 px-6 flex items-center">
+      <nav className="w-full h-16 flex items-center">
         <Link href="/admin">
           <span className="font-semibold text-lg">AnatWithMe</span>
         </Link>
@@ -22,7 +22,7 @@ export default function AdminLayout({
         </div>
       </nav>
 
-      <div className="flex-1 flex items-center justify-center">{children}</div>
+      <div className="flex-1 flex justify-center py-6">{children}</div>
     </main>
   );
 }

@@ -26,10 +26,12 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} text-foreground antialiased`}
       >
-        <div className="max-w-7xl mx-auto w-full min-h-screen flex flex-col">
-          {children}
+        <div className="min-h-screen w-full bg-muted/15">
+          <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col">
+            {children}
+          </div>
         </div>
       </body>
     </html>
