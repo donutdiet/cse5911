@@ -68,7 +68,9 @@ export function RosterTable({ students }: { students: Student[] }) {
           <TableRow>
             <TableHead className="px-4">Full Name</TableHead>
             <TableHead className="px-4">Email</TableHead>
+            <TableHead className="px-4">Phone Number</TableHead>
             <TableHead className="px-4">Group</TableHead>
+            <TableHead className="px-4">Study Mode</TableHead>
             <TableHead className="w-14 px-4 text-right">
               <span className="sr-only">Actions</span>
             </TableHead>
@@ -104,7 +106,13 @@ export function RosterTable({ students }: { students: Student[] }) {
                   {student.email}
                 </TableCell>
                 <TableCell className="px-4 text-muted-foreground">
+                  Phone Number Placeholder
+                </TableCell>
+                <TableCell className="px-4 text-muted-foreground">
                   Group Placeholder
+                </TableCell>
+                <TableCell className="px-4 text-muted-foreground">
+                  Study Mode Placeholder
                 </TableCell>
                 <TableCell className="px-4 text-right">
                   <DropdownMenu>
