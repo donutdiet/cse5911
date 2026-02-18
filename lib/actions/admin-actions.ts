@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 export async function removeStudent(studentId: string) {
   const supabase = await createClient();
 
-  console.log("Removing student:", studentId);
   const { error } = await supabase
     .from("profile")
     .delete()
