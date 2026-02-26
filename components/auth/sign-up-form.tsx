@@ -104,7 +104,7 @@ export function SignUpForm({
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button
                 type="submit"
-                className="w-full cursor-pointer"
+                className="w-full"
                 disabled={isLoading}
               >
                 {isLoading ? "Creating an account..." : "Sign up"}

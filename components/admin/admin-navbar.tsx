@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Users, LayoutGrid } from "lucide-react";
+import { Users, LayoutGrid, Calendar } from "lucide-react";
 
 const tabs = [
   { label: "Roster", href: "/admin/roster", icon: Users },
   { label: "Groups", href: "/admin/groups", icon: LayoutGrid },
+  { label: "Agendas", href: "/admin/agendas", icon: Calendar },
 ];
 
 export function AdminNavbar() {
