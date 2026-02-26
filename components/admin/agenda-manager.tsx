@@ -281,7 +281,7 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
             <col className="w-14" />
           </colgroup>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/100">
               <TableHead className="w-10 px-4" aria-label="Expand" />
               <TableHead className="px-4">Week</TableHead>
               <TableHead className="px-4">Title</TableHead>
@@ -374,45 +374,47 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                 const detailRow = isExpanded ? (
                   <TableRow
                     key={`${agenda.id}-detail`}
-                    className="bg-muted/20 hover:bg-muted/20"
+                    className="bg-muted/5 hover:bg-muted/5"
                   >
-                    <TableCell colSpan={5} className="px-4 py-3">
-                      <div className="max-h-48 overflow-y-auto pl-6">
-                        {tasks.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            No tasks
-                          </p>
-                        ) : (
-                          <ul className="space-y-2.5 text-sm">
-                            {tasks.map((task) => (
-                              <li key={task.id}>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">
-                                    {task.order != null
-                                      ? `${task.order}. ${task.title}`
-                                      : task.title}
-                                  </span>
-                                  {task.link && (
-                                    <a
-                                      href={task.link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="shrink-0 text-primary hover:underline"
-                                      aria-label="Open link"
-                                    >
-                                      <ExternalLink className="size-3.5" />
-                                    </a>
+                    <TableCell colSpan={5} className="px-4 py-3mb bg-muted/100">
+                      <div className="ml-10 px-4 py-3">
+                        <div className="max-h-48 overflow-y-auto">
+                          {tasks.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No tasks
+                            </p>
+                          ) : (
+                            <ul className="space-y-2.5 text-sm">
+                              {tasks.map((task) => (
+                                <li key={task.id}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {task.order != null
+                                        ? `${task.order}. ${task.title}`
+                                        : task.title}
+                                    </span>
+                                    {task.link && (
+                                      <a
+                                        href={task.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="shrink-0 text-primary hover:underline"
+                                        aria-label="Open link"
+                                      >
+                                        <ExternalLink className="size-3.5" />
+                                      </a>
+                                    )}
+                                  </div>
+                                  {task.description && (
+                                    <p className="mt-0.5 text-muted-foreground">
+                                      {task.description}
+                                    </p>
                                   )}
-                                </div>
-                                {task.description && (
-                                  <p className="mt-0.5 text-muted-foreground">
-                                    {task.description}
-                                  </p>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
