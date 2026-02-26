@@ -6,7 +6,12 @@ export default async function AgendasPage() {
 
   const { data: agendaData, error: agendaError } = await supabase
     .from("agenda")
-    .select("*")
+    .select(
+      `
+      *,
+      tasks:task(*)
+    `,
+    )
     .order("week", { ascending: true });
 
   if (agendaError) {

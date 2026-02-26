@@ -6,6 +6,7 @@ import {
   ChevronUp,
   ChevronsDownUp,
   ChevronsUpDown,
+  ExternalLink,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -42,11 +43,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 type Task = {
   id: number;
   title: string;
-  status?: string;
+  description: string | null;
+  link: string | null;
+  order: number | null;
 };
 
 type Agenda = {
@@ -332,7 +336,11 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                 const isEditing = editingAgendaId === agenda.id;
                 const isDeleting = deletingId === agenda.id;
                 const isExpanded = expandedAgendaIds.has(agenda.id);
-                const tasks = agenda.tasks ?? [];
+                const tasks = [...(agenda.tasks ?? [])].sort((a, b) => {
+                  const oa = a.order ?? Infinity;
+                  const ob = b.order ?? Infinity;
+                  return oa - ob;
+                });
 
                 const expandCell = (
                   <TableCell className="w-10 px-4 align-top">
@@ -369,22 +377,38 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                     className="bg-muted/20 hover:bg-muted/20"
                   >
                     <TableCell colSpan={5} className="px-4 py-3">
-                      <div className="max-h-32 overflow-y-auto pl-6">
+                      <div className="max-h-48 overflow-y-auto pl-6">
                         {tasks.length === 0 ? (
                           <p className="text-sm text-muted-foreground">
                             No tasks
                           </p>
                         ) : (
-                          <ul className="list-disc list-inside space-y-1 text-sm">
+                          <ul className="space-y-2.5 text-sm">
                             {tasks.map((task) => (
                               <li key={task.id}>
-                                {task.title}
-                                {task.status ? (
-                                  <span className="text-muted-foreground">
-                                    {" — "}
-                                    {task.status}
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {task.order != null
+                                      ? `${task.order}. ${task.title}`
+                                      : task.title}
                                   </span>
-                                ) : null}
+                                  {task.link && (
+                                    <a
+                                      href={task.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="shrink-0 text-primary hover:underline"
+                                      aria-label="Open link"
+                                    >
+                                      <ExternalLink className="size-3.5" />
+                                    </a>
+                                  )}
+                                </div>
+                                {task.description && (
+                                  <p className="mt-0.5 text-muted-foreground">
+                                    {task.description}
+                                  </p>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -463,13 +487,16 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                         </span>
                       </TableCell>
                       <TableCell className="px-4 font-medium">
-                        {agenda.title}
+                        <Link
+                          href={`/admin/agendas/${agenda.id}`}
+                          className="text-primary underline-offset-2 hover:underline focus-visible:underline"
+                        >
+                          {agenda.title}
+                        </Link>
                       </TableCell>
                       <TableCell className="px-4 text-muted-foreground">
                         <span className="line-clamp-1">
-                          {agenda.description || (
-                            <span className="italic">No description</span>
-                          )}
+                          {agenda.description}
                         </span>
                       </TableCell>
                       <TableCell className="px-4 text-right">
