@@ -14,7 +14,7 @@ export default async function ProfilePage() {
 
   const { data: profile, error } = await supabase
     .from("profile")
-    .select("user_id, full_name, email, phone, in_person, profile_picture_url")
+    .select("user_id, full_name, email, phone, preference, profile_picture_url")
     .eq("user_id", user.id)
     .single();
 
@@ -22,9 +22,7 @@ export default async function ProfilePage() {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <h1 className="text-3xl font-bold mb-3">Profile</h1>
-        <p className="text-red-600">
-          Profile could not load.
-        </p>
+        <p className="text-red-600">Profile could not load.</p>
       </div>
     );
   }
