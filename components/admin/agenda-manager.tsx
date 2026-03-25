@@ -433,7 +433,7 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                 );
 
                 const expandCell = (
-                  <TableCell className="w-10 px-4 align-top">
+                  <TableCell className="w-10 px-4 align-middle">
                     <Button
                       type="button"
                       variant="ghost"
@@ -619,7 +619,9 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
 
                 return (
                   <Fragment key={agenda.id}>
-                    <TableRow className={cn(isDeleting && "opacity-50")}>
+                    <TableRow
+                      className={cn(isDeleting && "opacity-50", "[&>td]:align-middle")}
+                    >
                       {expandCell}
                       <TableCell className="px-4">
                         <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-muted text-xs font-medium tabular-nums">
@@ -646,48 +648,54 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                         </span>
                       </TableCell>
                       <TableCell className="px-4 text-right">
-                        <span className="mr-2 hidden text-xs text-muted-foreground sm:inline">
-                          {agenda.sections?.length ?? 0}{" "}
-                          {(agenda.sections?.length ?? 0) === 1
-                            ? "section"
-                            : "sections"}
-                          , {taskCount} {taskCount === 1 ? "task" : "tasks"}
-                        </span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              disabled={isPending || isDeleting}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open row actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                beginEdit(agenda);
-                              }}
-                            >
-                              <Pencil className="size-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              disabled={isDeleting}
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                handleDeleteAgenda(agenda.id);
-                              }}
-                            >
-                              <Trash2 className="size-4" />
-                              {isDeleting ? "Deleting..." : "Delete"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="hidden items-center gap-1.5 sm:inline-flex">
+                            <span className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                              {agenda.sections?.length ?? 0}{" "}
+                              {(agenda.sections?.length ?? 0) === 1
+                                ? "section"
+                                : "sections"}
+                            </span>
+                            <span className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                              {taskCount} {taskCount === 1 ? "task" : "tasks"}
+                            </span>
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                disabled={isPending || isDeleting}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open row actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  beginEdit(agenda);
+                                }}
+                              >
+                                <Pencil className="size-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                disabled={isDeleting}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  handleDeleteAgenda(agenda.id);
+                                }}
+                              >
+                                <Trash2 className="size-4" />
+                                {isDeleting ? "Deleting..." : "Delete"}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {detailRow}

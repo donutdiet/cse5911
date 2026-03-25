@@ -3,8 +3,23 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+type StudentPreference = "in_person" | "online" | "no_preference";
+
+type UpdatedProfile = {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  phone: string | null;
+  preference: StudentPreference;
+  profile_picture_url: string | null;
+};
+
+function isStudentPreference(value: string): value is StudentPreference {
+  return ["in_person", "online", "no_preference"].includes(value);
+}
+
 type ActionResult =
-  | { ok: true; updated: any }
+  | { ok: true; updated: UpdatedProfile }
   | { ok: false; error: string };
 
 const BUCKET = "profile-pictures";
@@ -24,8 +39,7 @@ export async function updateStudentProfile(
   const preference = String(formData.get("preference") ?? "no_preference");
 
   // make sure only valid values get saved
-  const validPreferences = ["in_person", "online", "no_preference"];
-  if (!validPreferences.includes(preference)) {
+  if (!isStudentPreference(preference)) {
     return { ok: false, error: "Invalid preference value." };
   }
 
@@ -63,7 +77,12 @@ export async function updateStudentProfile(
     newProfilePictureUrl = pub.publicUrl;
   }
 
-  const payload: Record<string, any> = {
+  const payload: {
+    full_name: string | null;
+    phone: string | null;
+    preference: StudentPreference;
+    profile_picture_url?: string | null;
+  } = {
     full_name: full_name.length ? full_name : null,
     phone: phone.length ? phone : null,
     preference,

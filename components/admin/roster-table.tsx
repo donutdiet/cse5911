@@ -25,6 +25,7 @@ type Student = {
   user_id: string;
   full_name: string | null;
   email: string;
+  phone: string | null;
   role: string;
   preference: "in_person" | "online" | "no_preference" | null;
   profile_picture_url: string | null;
@@ -104,7 +105,7 @@ export function RosterTable({ students }: { students: Student[] }) {
           {actionError ? (
             <TableRow>
               <TableCell
-                colSpan={4}
+                colSpan={6}
                 className="p-3 text-center text-destructive"
               >
                 {actionError}
@@ -114,7 +115,7 @@ export function RosterTable({ students }: { students: Student[] }) {
           {students.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={4}
+                colSpan={6}
                 className="p-4 text-center text-muted-foreground"
               >
                 No students found.
@@ -127,11 +128,14 @@ export function RosterTable({ students }: { students: Student[] }) {
                   <div className="flex min-h-9 items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-xs font-medium text-muted-foreground">
                       {student.profile_picture_url ? (
-                        <img
-                          src={student.profile_picture_url}
-                          alt={student.full_name ?? "Student profile"}
-                          className="h-full w-full object-cover"
-                        />
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={student.profile_picture_url}
+                            alt={student.full_name ?? "Student profile"}
+                            className="h-full w-full object-cover"
+                          />
+                        </>
                       ) : (
                         <span>{getInitials(student.full_name)}</span>
                       )}
@@ -151,7 +155,7 @@ export function RosterTable({ students }: { students: Student[] }) {
                   {student.email}
                 </TableCell>
                 <TableCell className="px-4 text-muted-foreground">
-                  Phone Number Placeholder
+                  {student.phone ?? "No phone number"}
                 </TableCell>
                 <TableCell className="px-4 text-muted-foreground">
                   Group Placeholder

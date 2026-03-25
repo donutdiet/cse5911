@@ -5,6 +5,44 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { runMatchingAlgorithm } from "@/lib/matching";
 
+type StudentProfileRow = {
+  user_id: string;
+  full_name: string | null;
+  preference: "in_person" | "online" | "no_preference" | null;
+};
+
+type AvailabilityRow = {
+  user_id: string;
+  time_slot_id: number;
+  time_slot: {
+    slot_index: number;
+  }[];
+};
+
+type MatchingStudent = {
+  user_id: string;
+  full_name: string;
+  preference: "in_person" | "online" | "no_preference";
+  availability: {
+    time_slot_id: number;
+    slot_index: number;
+  }[];
+};
+
+type MatchingGroup = {
+  members: { user_id: string }[];
+  window: {
+    startIndex: number;
+    day: number;
+  };
+  preference: string;
+};
+
+type FlaggedStudent = {
+  user_id: string;
+  full_name: string;
+};
+
 export async function removeStudent(studentId: string) {
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -114,25 +152,33 @@ export async function runMatchingAction() {
     string,
     { time_slot_id: number; slot_index: number }[]
   > = {};
-  for (const row of availabilityRows ?? []) {
+  for (const row of (availabilityRows ?? []) as AvailabilityRow[]) {
+    const slot = row.time_slot?.[0];
+    if (!slot) {
+      continue;
+    }
+
     if (!availabilityByUser[row.user_id]) {
       availabilityByUser[row.user_id] = [];
     }
     availabilityByUser[row.user_id].push({
       time_slot_id: row.time_slot_id,
-      slot_index: (row.time_slot as any).slot_index,
+      slot_index: slot.slot_index,
     });
   }
 
   // build the student array the algorithm expects
-  const students = (studentProfiles ?? []).map((p: any) => ({
+  const students: MatchingStudent[] = ((studentProfiles ?? []) as StudentProfileRow[]).map((p) => ({
     user_id: p.user_id,
     full_name: p.full_name ?? "Unknown",
     preference: p.preference ?? "no_preference",
     availability: availabilityByUser[p.user_id] ?? [],
   }));
 
-  const { groups, flagged } = runMatchingAlgorithm(students);
+  const { groups, flagged } = runMatchingAlgorithm(students) as {
+    groups: MatchingGroup[];
+    flagged: FlaggedStudent[];
+  };
 
   let groupsCreated = 0;
 
@@ -162,7 +208,7 @@ export async function runMatchingAction() {
       continue;
     }
 
-    const memberRows = group.members.map((member: any) => ({
+    const memberRows = group.members.map((member) => ({
       group_id: newGroup.id,
       user_id: member.user_id,
     }));
@@ -187,7 +233,7 @@ export async function runMatchingAction() {
   return {
     groupsCreated,
     flaggedCount: flagged.length,
-    flagged: flagged.map((s: any) => ({
+    flagged: flagged.map((s) => ({
       user_id: s.user_id,
       full_name: s.full_name,
     })),

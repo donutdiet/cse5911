@@ -96,13 +96,15 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-full overflow-hidden border bg-gray-100 flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             {previewUrl || profile.profile_picture_url ? (
-              <img
-                src={previewUrl || profile.profile_picture_url || ""}
-                alt="Profile"
-                className="h-full w-full object-cover"
-              />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl || profile.profile_picture_url || ""}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              </>
             ) : (
               <span className="text-xs text-gray-500">No photo</span>
             )}

@@ -14,6 +14,15 @@ import { redirect }     from 'next/navigation'
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+type GroupMember = {
+  user_id: string
+  profile: {
+    full_name: string | null
+    email: string | null
+    phone: string | null
+  }[]
+}
+
 function formatTime(timeString: string) {
   const [hourStr, minStr] = timeString.split(':')
   const hour   = parseInt(hourStr)
@@ -123,23 +132,23 @@ export default async function GroupPage() {
           <p className="text-sm text-gray-400">No members found.</p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {members.map((m: any) => {
+            {members.map((m: GroupMember) => {
               const isYou = m.user_id === user.id
               return (
                 <li key={m.user_id} className="py-3 flex items-start justify-between">
                   <div>
                     <p className="text-sm text-gray-800">
-                      {m.profile?.full_name ?? 'Unknown'}
+                      {m.profile?.[0]?.full_name ?? 'Unknown'}
                       {isYou && (
                         <span className="ml-2 text-xs text-[#BB0000] font-medium">You</span>
                       )}
                     </p>
-                    {m.profile?.email && (
-                      <p className="text-xs text-gray-400 mt-0.5">{m.profile.email}</p>
+                    {m.profile?.[0]?.email && (
+                      <p className="text-xs text-gray-400 mt-0.5">{m.profile[0].email}</p>
                     )}
                   </div>
-                  {m.profile?.phone && (
-                    <p className="text-xs text-gray-400">{m.profile.phone}</p>
+                  {m.profile?.[0]?.phone && (
+                    <p className="text-xs text-gray-400">{m.profile[0].phone}</p>
                   )}
                 </li>
               )

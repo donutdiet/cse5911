@@ -6,7 +6,9 @@ export default async function RosterPage() {
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profile")
-    .select("user_id, full_name, role, email, preference, profile_picture_url")
+    .select(
+      "user_id, full_name, role, email, phone, preference, profile_picture_url",
+    )
     .eq("role", "student");
 
   if (profilesError) {
