@@ -26,7 +26,31 @@ type Student = {
   full_name: string | null;
   email: string;
   role: string;
+  preference: "in_person" | "online" | "no_preference" | null;
+  profile_picture_url: string | null;
 };
+
+function formatStudyMode(preference: Student["preference"]) {
+  switch (preference) {
+    case "in_person":
+      return "In-person";
+    case "online":
+      return "Online";
+    case "no_preference":
+    default:
+      return "No preference";
+  }
+}
+
+function getInitials(name: string | null) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export function RosterTable({ students }: { students: Student[] }) {
   const router = useRouter();
@@ -98,9 +122,30 @@ export function RosterTable({ students }: { students: Student[] }) {
             </TableRow>
           ) : (
             students.map((student) => (
-              <TableRow key={student.user_id}>
-                <TableCell className="px-4 font-medium">
-                  {student.full_name ?? "No name provided"}
+              <TableRow key={student.user_id} className="[&>td]:align-middle">
+                <TableCell className="px-4 align-middle">
+                  <div className="flex min-h-9 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-xs font-medium text-muted-foreground">
+                      {student.profile_picture_url ? (
+                        <img
+                          src={student.profile_picture_url}
+                          alt={student.full_name ?? "Student profile"}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span>{getInitials(student.full_name)}</span>
+                      )}
+                    </div>
+                    <span
+                      className={
+                        student.full_name
+                          ? "font-medium"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {student.full_name ?? "No name provided"}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell className="px-4 text-muted-foreground">
                   {student.email}
@@ -112,10 +157,10 @@ export function RosterTable({ students }: { students: Student[] }) {
                   Group Placeholder
                 </TableCell>
                 <TableCell className="px-4 text-muted-foreground">
-                  Study Mode Placeholder
+                  {formatStudyMode(student.preference)}
                 </TableCell>
                 <TableCell className="px-4 text-right">
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
