@@ -21,7 +21,7 @@ export default async function RosterPage() {
         <h1 className="text-xl font-semibold">Student Roster</h1>
         <p className="text-muted-foreground text-sm">
           {roster.length} {roster.length === 1 ? "student" : "students"}{" "}
-          enrolled
+          registered
         </p>
       </div>
       <RosterTable students={roster} />

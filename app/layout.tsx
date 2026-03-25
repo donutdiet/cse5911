@@ -29,7 +29,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} text-foreground antialiased`}
       >
         <div className="min-h-screen w-full bg-muted/15">
-          <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col">
+          <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6">
             {children}
           </div>
         </div>
