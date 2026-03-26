@@ -271,6 +271,34 @@ export default function AdminGroupsClient({
         </div>
       )}
 
+      {lastResult && lastResult.flaggedCount > 0 && (
+        <div className="rounded-lg border border-amber-300/70 bg-amber-50/70 px-4 py-4">
+          <div className="space-y-1">
+            <h2 className="text-sm font-medium text-amber-900">
+              Unplaced Students ({lastResult.flaggedCount})
+            </h2>
+            <p className="text-sm text-amber-800">
+              These students could not be matched into a valid 2-hour group.
+            </p>
+          </div>
+          <ul className="mt-3 space-y-1.5 text-sm">
+            {lastResult.flagged.map((student) => (
+              <li
+                key={student.user_id}
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 text-amber-950"
+              >
+                <span className="font-medium">
+                  {student.full_name || "Unknown"}
+                </span>
+                <span className="font-mono text-xs text-amber-800">
+                  {student.user_id.slice(0, 8)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!hasGroups ? (
         <Card className="rounded-none">
           <CardHeader>
@@ -587,34 +615,6 @@ export default function AdminGroupsClient({
           </Table>
         </div>
       </section>
-
-      {lastResult && lastResult.flaggedCount > 0 && (
-        <div className="rounded-lg border border-amber-300/70 bg-amber-50/70 px-4 py-4">
-          <div className="space-y-1">
-            <h2 className="text-sm font-medium text-amber-900">
-              Unplaced Students ({lastResult.flaggedCount})
-            </h2>
-            <p className="text-sm text-amber-800">
-              These students could not be matched into a valid 2-hour group.
-            </p>
-          </div>
-          <ul className="mt-3 space-y-1.5 text-sm">
-            {lastResult.flagged.map((student) => (
-              <li
-                key={student.user_id}
-                className="flex flex-wrap items-center gap-x-2 gap-y-1 text-amber-950"
-              >
-                <span className="font-medium">
-                  {student.full_name || "Unknown"}
-                </span>
-                <span className="font-mono text-xs text-amber-800">
-                  {student.user_id.slice(0, 8)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

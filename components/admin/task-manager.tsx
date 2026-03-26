@@ -134,13 +134,11 @@ export function SectionManager({ agenda }: { agenda: Agenda }) {
   );
   const tasks = useMemo(
     () =>
-      sortByOrder(
-        sections.flatMap((section) =>
-          (section.tasks ?? []).map((task) => ({
+      sections.flatMap((section) =>
+        sortByOrder(section.tasks ?? []).map((task) => ({
             ...task,
             sectionTitle: section.title,
           })),
-        ),
       ),
     [sections],
   );
