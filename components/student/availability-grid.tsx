@@ -61,7 +61,8 @@ export function AvailabilityGrid({ userId, timeSlots, savedSlotIds }: Props) {
     // optimistic update - toggle immediately so UI feels instant
     setSelected((prev) => {
       const next = new Set(prev);
-      isCurrentlySelected ? next.delete(slotId) : next.add(slotId);
+      if (isCurrentlySelected) next.delete(slotId);
+      else next.add(slotId);
       return next;
     });
 

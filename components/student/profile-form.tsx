@@ -8,7 +8,7 @@ type Profile = {
   email: string;
   full_name: string | null;
   phone: string | null;
-  in_person: boolean | null;
+  preference: "in_person" | "online" | "no_preference" | null;
   profile_picture_url: string | null;
 };
 
@@ -17,7 +17,7 @@ type Toast = { type: "success" | "error"; text: string } | null;
 export default function ProfileForm({ profile }: { profile: Profile }) {
   const [isPending, startTransition] = useTransition();
 
-  const defaultMode = (profile.in_person ?? true) ? "in_person" : "online";
+  const defaultPreference = profile.preference ?? "no_preference";
 
   const [toast, setToast] = useState<Toast>(null);
 
@@ -48,7 +48,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
     const safe = new FormData();
     safe.set("full_name", String(fd.get("full_name") ?? ""));
     safe.set("phone", String(fd.get("phone") ?? ""));
-    safe.set("mode", String(fd.get("mode") ?? "in_person"));
+    safe.set("preference", String(fd.get("preference") ?? "no_preference"));
 
     if (selectedFile) {
       safe.set("avatar", selectedFile);
@@ -96,20 +96,21 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-full overflow-hidden border bg-gray-100 flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             {previewUrl || profile.profile_picture_url ? (
-              <img
-                src={previewUrl || profile.profile_picture_url || ""}
-                alt="Profile"
-                className="h-full w-full object-cover"
-              />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl || profile.profile_picture_url || ""}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              </>
             ) : (
               <span className="text-xs text-gray-500">No photo</span>
             )}
           </div>
 
           <div className="flex flex-col gap-2">
-            {/* Hidden native input */}
             <input
               id="avatar"
               name="avatar"
@@ -123,17 +124,11 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
                 const MAX_BYTES = 3 * 1024 * 1024;
                 if (!file.type.startsWith("image/")) {
-                  setToast({
-                    type: "error",
-                    text: "Please choose an image file.",
-                  });
+                  setToast({ type: "error", text: "Please choose an image file." });
                   return;
                 }
                 if (file.size > MAX_BYTES) {
-                  setToast({
-                    type: "error",
-                    text: "Image too large (max 3MB).",
-                  });
+                  setToast({ type: "error", text: "Image too large (max 3MB)." });
                   return;
                 }
 
@@ -146,9 +141,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
                 htmlFor="avatar"
                 className={[
                   "inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold cursor-pointer",
-                  isPending
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-gray-50",
+                  isPending ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50",
                 ].join(" ")}
               >
                 {selectedFile ? "Change photo" : "Upload new photo"}
@@ -166,7 +159,6 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
               )}
             </div>
 
-            {/* File name pill */}
             {selectedFile ? (
               <div className="inline-flex items-center gap-2">
                 <span className="text-xs rounded-full bg-gray-100 border px-3 py-1 text-gray-700">
@@ -177,9 +169,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
                 </span>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">
-                PNG/JPG/WebP. Max 3MB.
-              </p>
+              <p className="text-sm text-gray-500">PNG/JPG/WebP. Max 3MB.</p>
             )}
           </div>
         </div>
@@ -209,16 +199,16 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         />
       </div>
 
-      {/* Mode */}
+      {/* Meeting preference */}
       <div className="space-y-2">
-        <div className="font-semibold">Mode</div>
+        <div className="font-semibold">Meeting preference</div>
 
         <label className="flex items-center gap-2">
           <input
             type="radio"
-            name="mode"
+            name="preference"
             value="in_person"
-            defaultChecked={defaultMode === "in_person"}
+            defaultChecked={defaultPreference === "in_person"}
           />
           In-person
         </label>
@@ -226,11 +216,21 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         <label className="flex items-center gap-2">
           <input
             type="radio"
-            name="mode"
+            name="preference"
             value="online"
-            defaultChecked={defaultMode === "online"}
+            defaultChecked={defaultPreference === "online"}
           />
           Online
+        </label>
+
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="preference"
+            value="no_preference"
+            defaultChecked={defaultPreference === "no_preference"}
+          />
+          No preference
         </label>
       </div>
 

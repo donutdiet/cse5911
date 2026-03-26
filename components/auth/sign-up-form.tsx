@@ -16,6 +16,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+function isValidOsuStudentEmail(email: string) {
+  return email.trim().toLowerCase().endsWith("@osu.edu");
+}
+
 export function SignUpForm({
   className,
   ...props
@@ -33,15 +37,23 @@ export function SignUpForm({
     setIsLoading(true);
     setError(null);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     if (password !== repeatPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
 
+    if (!isValidOsuStudentEmail(normalizedEmail)) {
+      setError("You must sign up with an @osu.edu student email address");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/student`,
@@ -71,11 +83,14 @@ export function SignUpForm({
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="name.#@osu.edu"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Only `@osu.edu` student email addresses can create accounts.
+                </p>
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
@@ -102,11 +117,7 @@ export function SignUpForm({
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating an account..." : "Sign up"}
               </Button>
             </div>

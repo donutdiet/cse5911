@@ -6,7 +6,9 @@ export default async function RosterPage() {
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profile")
-    .select("user_id, full_name, role, email")
+    .select(
+      "user_id, full_name, role, email, phone, preference, profile_picture_url",
+    )
     .eq("role", "student");
 
   if (profilesError) {
@@ -21,7 +23,7 @@ export default async function RosterPage() {
         <h1 className="text-xl font-semibold">Student Roster</h1>
         <p className="text-muted-foreground text-sm">
           {roster.length} {roster.length === 1 ? "student" : "students"}{" "}
-          enrolled
+          registered
         </p>
       </div>
       <RosterTable students={roster} />

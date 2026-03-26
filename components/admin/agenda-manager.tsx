@@ -47,10 +47,23 @@ import Link from "next/link";
 
 type Task = {
   id: number;
+  section_id: number;
   title: string;
   description: string | null;
   link: string | null;
   order: number | null;
+};
+
+type SectionType = "solo" | "group";
+
+type Section = {
+  id: number;
+  agenda_id: number;
+  title: string;
+  description: string | null;
+  type: SectionType;
+  order: number | null;
+  tasks?: Task[];
 };
 
 type Agenda = {
@@ -58,8 +71,24 @@ type Agenda = {
   title: string;
   description: string | null;
   week: number;
-  tasks?: Task[];
+  start_date: string;
+  end_date: string;
+  sections?: Section[];
 };
+
+function formatAgendaDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
 
 export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
   const router = useRouter();
@@ -72,6 +101,8 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createWeek, setCreateWeek] = useState("");
+  const [createStartDate, setCreateStartDate] = useState("");
+  const [createEndDate, setCreateEndDate] = useState("");
 
   const [expandedAgendaIds, setExpandedAgendaIds] = useState<Set<number>>(
     () => new Set(),
@@ -80,11 +111,15 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editWeek, setEditWeek] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
 
   const resetCreateForm = () => {
     setCreateTitle("");
     setCreateDescription("");
     setCreateWeek("");
+    setCreateStartDate("");
+    setCreateEndDate("");
     setShowCreateForm(false);
   };
 
@@ -94,6 +129,8 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
     setEditTitle(agenda.title);
     setEditDescription(agenda.description ?? "");
     setEditWeek(String(agenda.week));
+    setEditStartDate(agenda.start_date);
+    setEditEndDate(agenda.end_date);
   };
 
   const cancelEdit = () => {
@@ -101,6 +138,8 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
     setEditTitle("");
     setEditDescription("");
     setEditWeek("");
+    setEditStartDate("");
+    setEditEndDate("");
   };
 
   const handleCreateAgenda = (event: FormEvent<HTMLFormElement>) => {
@@ -112,6 +151,10 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
       setActionError("Week must be a positive integer.");
       return;
     }
+    if (!createStartDate || !createEndDate) {
+      setActionError("Start date and end date are required.");
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -119,6 +162,8 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
           createTitle.trim(),
           createDescription.trim() || null,
           parsedWeek,
+          createStartDate,
+          createEndDate,
         );
         resetCreateForm();
         router.refresh();
@@ -138,6 +183,10 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
       setActionError("Week must be a positive integer.");
       return;
     }
+    if (!editStartDate || !editEndDate) {
+      setActionError("Start date and end date are required.");
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -146,6 +195,8 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
           editTitle.trim(),
           editDescription.trim() || null,
           parsedWeek,
+          editStartDate,
+          editEndDate,
         );
         cancelEdit();
         router.refresh();
@@ -198,7 +249,7 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateAgenda} className="space-y-4">
-              <div className="grid items-start gap-4 sm:grid-cols-[5rem_16rem_1fr]">
+              <div className="grid items-start gap-4 lg:grid-cols-[5rem_16rem_11rem_11rem_1fr]">
                 <div className="grid gap-2">
                   <Label htmlFor="agenda-week">Week</Label>
                   <Input
@@ -219,6 +270,28 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                     value={createTitle}
                     onChange={(e) => setCreateTitle(e.target.value)}
                     placeholder="e.g. Midterm 1 Review"
+                    required
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="grid\ gap-2">
+                  <Label htmlFor="agenda-start-date">Start date</Label>
+                  <Input
+                    id="agenda-start-date"
+                    type="date"
+                    value={createStartDate}
+                    onChange={(e) => setCreateStartDate(e.target.value)}
+                    required
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="agenda-end-date">End date</Label>
+                  <Input
+                    id="agenda-end-date"
+                    type="date"
+                    value={createEndDate}
+                    onChange={(e) => setCreateEndDate(e.target.value)}
                     required
                     disabled={isPending}
                   />
@@ -277,6 +350,8 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
             <col className="w-10" />
             <col className="w-[5rem]" />
             <col className="w-[16rem]" />
+            <col className="w-[10rem]" />
+            <col className="w-[10rem]" />
             <col />
             <col className="w-14" />
           </colgroup>
@@ -285,6 +360,8 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
               <TableHead className="w-10 px-4" aria-label="Expand" />
               <TableHead className="px-4">Week</TableHead>
               <TableHead className="px-4">Title</TableHead>
+              <TableHead className="px-4">Start date</TableHead>
+              <TableHead className="px-4">End date</TableHead>
               <TableHead className="px-4">Description</TableHead>
               <TableHead className="px-4 text-right">
                 {agendas.length > 0 ? (
@@ -325,7 +402,7 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
             {agendas.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={7}
                   className="px-4 py-12 text-center text-muted-foreground"
                 >
                   No agendas yet.
@@ -336,14 +413,27 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                 const isEditing = editingAgendaId === agenda.id;
                 const isDeleting = deletingId === agenda.id;
                 const isExpanded = expandedAgendaIds.has(agenda.id);
-                const tasks = [...(agenda.tasks ?? [])].sort((a, b) => {
-                  const oa = a.order ?? Infinity;
-                  const ob = b.order ?? Infinity;
-                  return oa - ob;
-                });
+                const sections = [...(agenda.sections ?? [])]
+                  .sort((a, b) => {
+                    const oa = a.order ?? Infinity;
+                    const ob = b.order ?? Infinity;
+                    return oa - ob;
+                  })
+                  .map((section) => ({
+                    ...section,
+                    tasks: [...(section.tasks ?? [])].sort((a, b) => {
+                      const oa = a.order ?? Infinity;
+                      const ob = b.order ?? Infinity;
+                      return oa - ob;
+                    }),
+                  }));
+                const taskCount = sections.reduce(
+                  (count, section) => count + (section.tasks?.length ?? 0),
+                  0,
+                );
 
                 const expandCell = (
-                  <TableCell className="w-10 px-4 align-top">
+                  <TableCell className="w-10 px-4 align-middle">
                     <Button
                       type="button"
                       variant="ghost"
@@ -359,7 +449,7 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                       }
                       aria-expanded={isExpanded}
                       aria-label={
-                        isExpanded ? "Collapse tasks" : "Expand tasks"
+                        isExpanded ? "Collapse sections" : "Expand sections"
                       }
                     >
                       {isExpanded ? (
@@ -376,40 +466,70 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                     key={`${agenda.id}-detail`}
                     className="bg-muted/5 hover:bg-muted/5"
                   >
-                    <TableCell colSpan={5} className="px-4 py-3mb bg-muted/100">
+                    <TableCell colSpan={7} className="px-4 py-3mb bg-muted/100">
                       <div className="ml-10 px-4 py-3">
                         <div className="max-h-48 overflow-y-auto">
-                          {tasks.length === 0 ? (
+                          {sections.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
-                              No tasks
+                              No sections
                             </p>
                           ) : (
                             <ul className="space-y-2.5 text-sm">
-                              {tasks.map((task) => (
-                                <li key={task.id}>
-                                  <div className="flex items-center gap-2">
+                              {sections.map((section) => (
+                                <li key={section.id} className="space-y-1.5">
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                     <span className="font-medium">
-                                      {task.order != null
-                                        ? `${task.order}. ${task.title}`
-                                        : task.title}
+                                      {section.order != null
+                                        ? `${section.order}. ${section.title}`
+                                        : section.title}
                                     </span>
-                                    {task.link && (
-                                      <a
-                                        href={task.link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="shrink-0 text-primary hover:underline"
-                                        aria-label="Open link"
-                                      >
-                                        <ExternalLink className="size-3.5" />
-                                      </a>
-                                    )}
+                                    <span className="text-muted-foreground">
+                                      {section.description || "No description"}
+                                    </span>
+                                    <div className="ml-1 inline-flex items-center gap-1.5 border-l pl-3">
+                                      <span className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                        {section.type[0].toUpperCase() +
+                                          section.type.slice(1)}
+                                      </span>
+                                      <span className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                        {section.tasks?.length ?? 0}{" "}
+                                        {(section.tasks?.length ?? 0) === 1
+                                          ? "task"
+                                          : "tasks"}
+                                      </span>
+                                    </div>
                                   </div>
-                                  {task.description && (
-                                    <p className="mt-0.5 text-muted-foreground">
-                                      {task.description}
-                                    </p>
-                                  )}
+                                  {section.tasks &&
+                                    section.tasks.length > 0 && (
+                                      <ul className="ml-4 space-y-1.5 text-muted-foreground">
+                                        {section.tasks.map((task) => (
+                                          <li
+                                            key={task.id}
+                                            className="flex flex-wrap items-center gap-x-2 gap-y-1"
+                                          >
+                                            <span className="font-medium text-foreground">
+                                              {task.order != null
+                                                ? `${task.order}. ${task.title}`
+                                                : task.title}
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                              {task.description || "No description"}
+                                            </span>
+                                            {task.link && (
+                                              <a
+                                                href={task.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="shrink-0 text-primary hover:underline"
+                                                aria-label="Open link"
+                                              >
+                                                <ExternalLink className="size-3.5" />
+                                              </a>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
                                 </li>
                               ))}
                             </ul>
@@ -439,6 +559,24 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                           <Input
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
+                            disabled={isPending}
+                            className="h-8"
+                          />
+                        </TableCell>
+                        <TableCell className="px-4 align-top">
+                          <Input
+                            type="date"
+                            value={editStartDate}
+                            onChange={(e) => setEditStartDate(e.target.value)}
+                            disabled={isPending}
+                            className="h-8"
+                          />
+                        </TableCell>
+                        <TableCell className="px-4 align-top">
+                          <Input
+                            type="date"
+                            value={editEndDate}
+                            onChange={(e) => setEditEndDate(e.target.value)}
                             disabled={isPending}
                             className="h-8"
                           />
@@ -481,7 +619,9 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
 
                 return (
                   <Fragment key={agenda.id}>
-                    <TableRow className={cn(isDeleting && "opacity-50")}>
+                    <TableRow
+                      className={cn(isDeleting && "opacity-50", "[&>td]:align-middle")}
+                    >
                       {expandCell}
                       <TableCell className="px-4">
                         <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-muted text-xs font-medium tabular-nums">
@@ -497,46 +637,65 @@ export function AgendaManager({ agendas }: { agendas: Agenda[] }) {
                         </Link>
                       </TableCell>
                       <TableCell className="px-4 text-muted-foreground">
+                        {formatAgendaDate(agenda.start_date)}
+                      </TableCell>
+                      <TableCell className="px-4 text-muted-foreground">
+                        {formatAgendaDate(agenda.end_date)}
+                      </TableCell>
+                      <TableCell className="px-4 text-muted-foreground">
                         <span className="line-clamp-1">
                           {agenda.description}
                         </span>
                       </TableCell>
                       <TableCell className="px-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              disabled={isPending || isDeleting}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open row actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                beginEdit(agenda);
-                              }}
-                            >
-                              <Pencil className="size-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              disabled={isDeleting}
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                handleDeleteAgenda(agenda.id);
-                              }}
-                            >
-                              <Trash2 className="size-4" />
-                              {isDeleting ? "Deleting..." : "Delete"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="hidden items-center gap-1.5 sm:inline-flex">
+                            <span className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                              {agenda.sections?.length ?? 0}{" "}
+                              {(agenda.sections?.length ?? 0) === 1
+                                ? "section"
+                                : "sections"}
+                            </span>
+                            <span className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                              {taskCount} {taskCount === 1 ? "task" : "tasks"}
+                            </span>
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                disabled={isPending || isDeleting}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open row actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  beginEdit(agenda);
+                                }}
+                              >
+                                <Pencil className="size-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                disabled={isDeleting}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  handleDeleteAgenda(agenda.id);
+                                }}
+                              >
+                                <Trash2 className="size-4" />
+                                {isDeleting ? "Deleting..." : "Delete"}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {detailRow}

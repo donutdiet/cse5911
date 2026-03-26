@@ -1,14 +1,26 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { TaskManager } from "@/components/admin/task-manager";
+import { SectionManager } from "@/components/admin/task-manager";
 
 type Task = {
   id: number;
-  agenda_id: number;
+  section_id: number;
   title: string;
   description: string | null;
   link: string | null;
   order: number | null;
+};
+
+type SectionType = "solo" | "group";
+
+type Section = {
+  id: number;
+  agenda_id: number;
+  title: string;
+  description: string | null;
+  type: SectionType;
+  order: number | null;
+  tasks: Task[];
 };
 
 type Agenda = {
@@ -16,7 +28,7 @@ type Agenda = {
   title: string;
   description: string | null;
   week: number;
-  tasks: Task[];
+  sections: Section[];
 };
 
 export default async function AgendaDetailPage({
@@ -37,7 +49,10 @@ export default async function AgendaDetailPage({
     .select(
       `
       *,
-      tasks:task(*)
+      sections:section(
+        *,
+        tasks:task(*)
+      )
     `,
     )
     .eq("id", agendaId)
@@ -49,7 +64,7 @@ export default async function AgendaDetailPage({
 
   return (
     <div className="w-full max-w-7xl space-y-2">
-      <TaskManager agenda={agenda as Agenda} />
+      <SectionManager agenda={agenda as Agenda} />
     </div>
   );
 }

@@ -7,6 +7,8 @@ export async function createAgenda(
   title: string,
   description: string | null,
   week: number,
+  startDate: string,
+  endDate: string,
 ) {
   const supabase = await createClient();
   const {
@@ -22,6 +24,8 @@ export async function createAgenda(
     title,
     description,
     week,
+    start_date: startDate,
+    end_date: endDate,
   });
 
   if (agendaError) {
@@ -36,6 +40,8 @@ export async function updateAgenda(
   title: string,
   description: string | null,
   week: number,
+  startDate: string,
+  endDate: string,
 ) {
   const supabase = await createClient();
   const {
@@ -53,6 +59,8 @@ export async function updateAgenda(
       title,
       description,
       week,
+      start_date: startDate,
+      end_date: endDate,
     })
     .eq("id", agendaId);
 
@@ -72,6 +80,15 @@ export async function deleteAgenda(agendaId: number) {
 
   if (userError || user === null) {
     throw new Error(`Error fetching current user: ${userError?.message}`);
+  }
+
+  const { error: sectionError } = await supabase
+    .from("section")
+    .delete()
+    .eq("agenda_id", agendaId);
+
+  if (sectionError) {
+    throw new Error(`Error deleting agenda sections: ${sectionError.message}`);
   }
 
   const { error: agendaError } = await supabase
