@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 import { CalendarClock, Users, UserRound, Menu } from "lucide-react";
 
 const tabs = [
-{ label: "Availability", href: "/student/availability", icon: CalendarClock },
-{ label: "Group", href: "/student/group", icon: Users },
-{ label: "Profile", href: "/student/profile", icon: UserRound },
+  { label: "Availability", href: "/student/availability", icon: CalendarClock },
+  { label: "Group", href: "/student/group", icon: Users },
+  { label: "Profile", href: "/student/profile", icon: UserRound },
 ];
 
 export function StudentNavbar() {

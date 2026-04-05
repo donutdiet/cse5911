@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 import { Users, LayoutGrid, Calendar, Menu } from "lucide-react";
 
 const tabs = [
-{ label: "Roster", href: "/admin/roster", icon: Users },
-{ label: "Groups", href: "/admin/groups", icon: LayoutGrid },
-{ label: "Agendas", href: "/admin/agendas", icon: Calendar },
+  { label: "Roster", href: "/admin/roster", icon: Users },
+  { label: "Groups", href: "/admin/groups", icon: LayoutGrid },
+  { label: "Agendas", href: "/admin/agendas", icon: Calendar },
 ];
 
 export function AdminNavbar() {
