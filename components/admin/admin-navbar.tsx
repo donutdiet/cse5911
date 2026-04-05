@@ -49,7 +49,7 @@ export function AdminNavbar() {
           Menu
         </button>
         {open && (
-          <div className="absolute mt-2 w-48 rounded-md border bg-background shadow-lg">
+          <div className="absolute mt-2 w-48 rounded-md border bg-background shadow-lg z-50">
             {tabs.map(({ label, href, icon: Icon }) => {
               const isActive =
                 pathname === href || pathname.startsWith(href + "/");
