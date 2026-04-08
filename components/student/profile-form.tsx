@@ -10,9 +10,18 @@ type Profile = {
   phone: string | null;
   preference: "in_person" | "online" | "no_preference" | null;
   profile_picture_url: string | null;
+  bio: string | null;
 };
 
 type Toast = { type: "success" | "error"; text: string } | null;
+
+function formatPhoneNumber(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
 
 export default function ProfileForm({ profile }: { profile: Profile }) {
   const [isPending, startTransition] = useTransition();
@@ -20,8 +29,11 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
   const defaultPreference = profile.preference ?? "no_preference";
 
   const [toast, setToast] = useState<Toast>(null);
-
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [phoneDisplay, setPhoneDisplay] = useState(
+    formatPhoneNumber(profile.phone ?? "")
+  );
+
   const previewUrl = useMemo(
     () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
     [selectedFile]
@@ -44,11 +56,21 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
     setToast(null);
 
     const fd = new FormData(e.currentTarget);
+    const cleanPhone = phoneDisplay.replace(/\D/g, "");
+
+    if (cleanPhone && cleanPhone.length !== 10) {
+      setToast({
+        type: "error",
+        text: "Phone number must be exactly 10 digits.",
+      });
+      return;
+    }
 
     const safe = new FormData();
     safe.set("full_name", String(fd.get("full_name") ?? ""));
-    safe.set("phone", String(fd.get("phone") ?? ""));
+    safe.set("phone", cleanPhone);
     safe.set("preference", String(fd.get("preference") ?? "no_preference"));
+    safe.set("bio", String(fd.get("bio") ?? ""));
 
     if (selectedFile) {
       safe.set("avatar", selectedFile);
@@ -59,6 +81,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
       if (res.ok) {
         setToast({ type: "success", text: "Profile updated successfully." });
         setSelectedFile(null);
+        setPhoneDisplay(formatPhoneNumber(cleanPhone));
       } else {
         setToast({ type: "error", text: res.error ?? "Save failed." });
       }
@@ -67,7 +90,6 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6 max-w-xl">
-      {/* Toast */}
       {toast && (
         <div
           className={[
@@ -90,21 +112,17 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         </div>
       )}
 
-      {/* Profile picture */}
       <div className="space-y-2">
         <label className="font-semibold">Profile picture</label>
 
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-full overflow-hidden border bg-gray-100 flex items-center justify-center">
             {previewUrl || profile.profile_picture_url ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewUrl || profile.profile_picture_url || ""}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                />
-              </>
+              <img
+                src={previewUrl || profile.profile_picture_url || ""}
+                alt="Profile"
+                className="h-full w-full object-cover"
+              />
             ) : (
               <span className="text-xs text-gray-500">No photo</span>
             )}
@@ -175,7 +193,6 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         </div>
       </div>
 
-      {/* Email (read-only) */}
       <div className="space-y-1">
         <label className="font-semibold">Email</label>
         <input
@@ -185,7 +202,6 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         />
       </div>
 
-      {/* Full name */}
       <div className="space-y-1">
         <label className="font-semibold" htmlFor="full_name">
           Full name
@@ -199,7 +215,6 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         />
       </div>
 
-      {/* Meeting preference */}
       <div className="space-y-2">
         <div className="font-semibold">Meeting preference</div>
 
@@ -234,21 +249,37 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
         </label>
       </div>
 
-      {/* Phone */}
       <div className="space-y-1">
         <label className="font-semibold" htmlFor="phone">
           Phone number (optional)
         </label>
         <input
           id="phone"
-          name="phone"
-          defaultValue={profile.phone ?? ""}
-          placeholder="(555) 555-5555"
+          type="text"
+          inputMode="numeric"
+          value={phoneDisplay}
+          onChange={(e) => setPhoneDisplay(formatPhoneNumber(e.target.value))}
+          placeholder="123-456-7890"
           className="w-full border rounded-md px-3 py-2"
         />
       </div>
 
-      {/* Save */}
+      <div className="space-y-1">
+        <label className="font-semibold" htmlFor="bio">
+          Bio
+        </label>
+        <textarea
+          id="bio"
+          name="bio"
+          defaultValue={profile.bio ?? ""}
+          maxLength={500}
+          rows={5}
+          placeholder="Tell other students a little about yourself"
+          className="w-full border rounded-md px-3 py-2"
+        />
+        <p className="text-sm text-gray-500">Max 500 characters.</p>
+      </div>
+
       <div className="flex items-center gap-3">
         <button
           type="submit"
