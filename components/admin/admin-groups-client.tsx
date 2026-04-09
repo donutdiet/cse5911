@@ -8,16 +8,29 @@ import {
   CircleAlert,
   CircleCheck,
   MoreHorizontal,
-  Pencil,
+  Plus,
   RefreshCcw,
   Trash2,
   TriangleAlert,
   Users,
   X,
 } from "lucide-react";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { runMatchingAction, deleteGroup } from "@/lib/actions/admin-actions";
+import {
+  assignStudentToGroup,
+  createManualGroup,
+  deleteGroup,
+  removeStudentFromGroup,
+  runMatchingAction,
+} from "@/lib/actions/admin-actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +53,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  DAY_NAMES,
+  getMeetingLabel,
+  GROUP_TIME_OPTIONS,
+  type CompatibilityWarning,
+  type GroupPreference,
+} from "@/lib/group-management";
 import { cn } from "@/lib/utils";
 
 type GroupMember = {
@@ -88,15 +110,15 @@ type UngroupedStudent = {
   profile_picture_url: string | null;
 };
 
-const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+type CreateGroupFormState = {
+  dayOfWeek: number;
+  meetStartTime: string;
+  preference: GroupPreference;
+  studentIds: string[];
+};
+
+const FIELD_CLASSNAME =
+  "border-input h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30";
 
 function formatTime(timeString: string) {
   const [hourStr, minStr] = timeString.split(":");
@@ -162,6 +184,29 @@ function getInitials(name: string | null) {
     .join("");
 }
 
+function getEndTimeFromStart(meetStartTime: string) {
+  const [hourString] = meetStartTime.split(":");
+  const hour = Number.parseInt(hourString, 10);
+  return `${String(hour + 1).padStart(2, "0")}:00:00`;
+}
+
+function getInputTimeValue(timeString: string) {
+  return timeString.slice(0, 5);
+}
+
+function formatManualPreference(preference: GroupPreference) {
+  return preference === "in_person" ? "In-person" : "Online";
+}
+
+function getDefaultCreateFormState(): CreateGroupFormState {
+  return {
+    dayOfWeek: 0,
+    meetStartTime: `${GROUP_TIME_OPTIONS[0]}:00`,
+    preference: "in_person",
+    studentIds: [],
+  };
+}
+
 export default function AdminGroupsClient({
   groups,
   ungroupedStudents,
@@ -173,6 +218,7 @@ export default function AdminGroupsClient({
 
   const [loadingMode, setLoadingMode] = useState<MatchingMode | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<MatchingResult | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [showFlagged, setShowFlagged] = useState(false);
@@ -181,9 +227,28 @@ export default function AdminGroupsClient({
     () => new Set(),
   );
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [removingMemberKey, setRemovingMemberKey] = useState<string | null>(
+    null,
+  );
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateGroupFormState>(() =>
+    getDefaultCreateFormState(),
+  );
+  const [createWarnings, setCreateWarnings] = useState<CompatibilityWarning[]>(
+    [],
+  );
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [assigningStudent, setAssigningStudent] =
+    useState<UngroupedStudent | null>(null);
+  const [assignGroupId, setAssignGroupId] = useState<string>("");
+  const [assignWarnings, setAssignWarnings] = useState<CompatibilityWarning[]>(
+    [],
+  );
+  const [assigningToGroup, setAssigningToGroup] = useState(false);
 
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearResultTimer = useCallback(() => {
     if (resultTimerRef.current) {
@@ -199,15 +264,82 @@ export default function AdminGroupsClient({
     }
   }, []);
 
+  const clearSuccessTimer = useCallback(() => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+  }, []);
+
+  const pushSuccessMessage = useCallback(
+    (message: string) => {
+      setSuccessMessage(message);
+      clearSuccessTimer();
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 6000);
+    },
+    [clearSuccessTimer],
+  );
+
   useEffect(() => {
     return () => {
       clearResultTimer();
       clearErrorTimer();
+      clearSuccessTimer();
     };
-  }, [clearResultTimer, clearErrorTimer]);
+  }, [clearErrorTimer, clearResultTimer, clearSuccessTimer]);
 
   const hasGroups = groups.length > 0;
   const loading = loadingMode !== null;
+  const busy =
+    loading ||
+    creatingGroup ||
+    assigningToGroup ||
+    deletingGroupId !== null ||
+    removingMemberKey !== null;
+  const createMeeting = {
+    dayOfWeek: createForm.dayOfWeek,
+    meetStartTime: createForm.meetStartTime,
+    meetEndTime: getEndTimeFromStart(createForm.meetStartTime),
+    preference: createForm.preference,
+  };
+  const selectedAssignGroup =
+    groups.find((group) => group.id === assignGroupId) ?? groups[0] ?? null;
+
+  useEffect(() => {
+    if (!assigningStudent) {
+      return;
+    }
+
+    if (!groups.some((group) => group.id === assignGroupId)) {
+      setAssignGroupId(groups[0]?.id ?? "");
+    }
+  }, [assignGroupId, assigningStudent, groups]);
+
+  function closeCreateGroupDialog() {
+    setCreateGroupOpen(false);
+    setCreateWarnings([]);
+    setCreateForm(getDefaultCreateFormState());
+  }
+
+  function openCreateGroupDialog() {
+    setError(null);
+    setCreateWarnings([]);
+    setCreateForm(getDefaultCreateFormState());
+    setCreateGroupOpen(true);
+  }
+
+  function closeAssignDialog() {
+    setAssigningStudent(null);
+    setAssignGroupId("");
+    setAssignWarnings([]);
+  }
+
+  function openAssignDialog(student: UngroupedStudent) {
+    setError(null);
+    setAssignWarnings([]);
+    setAssigningStudent(student);
+    setAssignGroupId(groups[0]?.id ?? "");
+  }
 
   async function runMatching(mode: MatchingMode) {
     setError(null);
@@ -250,7 +382,9 @@ export default function AdminGroupsClient({
   async function handleDeleteGroup(groupId: string) {
     setDeletingGroupId(groupId);
     setError(null);
+    setSuccessMessage(null);
     clearErrorTimer();
+    clearSuccessTimer();
 
     try {
       const result = await deleteGroup(groupId);
@@ -261,6 +395,7 @@ export default function AdminGroupsClient({
         return;
       }
 
+      pushSuccessMessage("Group deleted.");
       router.refresh();
     } catch {
       setError("Failed to delete group. Check the terminal for details.");
@@ -270,8 +405,383 @@ export default function AdminGroupsClient({
     }
   }
 
+  async function handleCreateGroup(overrideWarnings = false) {
+    setCreatingGroup(true);
+    setError(null);
+    setSuccessMessage(null);
+    clearErrorTimer();
+    clearSuccessTimer();
+
+    try {
+      const result = await createManualGroup({
+        dayOfWeek: createForm.dayOfWeek,
+        meetStartTime: createMeeting.meetStartTime,
+        meetEndTime: createMeeting.meetEndTime,
+        preference: createForm.preference,
+        studentIds: createForm.studentIds,
+        overrideWarnings,
+      });
+
+      if ("error" in result) {
+        setError(result.error ?? "Failed to create group");
+        errorTimerRef.current = setTimeout(() => setError(null), 8000);
+        return;
+      }
+
+      if ("requiresConfirmation" in result) {
+        setCreateWarnings(result.warnings);
+        return;
+      }
+
+      closeCreateGroupDialog();
+      pushSuccessMessage(
+        result.assignedCount && result.assignedCount > 0
+          ? `Group created and ${result.assignedCount} student${result.assignedCount === 1 ? "" : "s"} assigned.`
+          : "Empty group created.",
+      );
+      router.refresh();
+    } catch (createError) {
+      console.error("createManualGroup error:", createError);
+      setError("Failed to create group. Check the terminal for details.");
+      errorTimerRef.current = setTimeout(() => setError(null), 8000);
+    } finally {
+      setCreatingGroup(false);
+    }
+  }
+
+  async function handleAssignStudent(overrideWarnings = false) {
+    if (!assigningStudent || !assignGroupId) {
+      setError("Choose a student and target group first.");
+      errorTimerRef.current = setTimeout(() => setError(null), 8000);
+      return;
+    }
+
+    setAssigningToGroup(true);
+    setError(null);
+    setSuccessMessage(null);
+    clearErrorTimer();
+    clearSuccessTimer();
+
+    try {
+      const result = await assignStudentToGroup({
+        userId: assigningStudent.user_id,
+        groupId: assignGroupId,
+        overrideWarnings,
+      });
+
+      if ("error" in result) {
+        setError(result.error ?? "Failed to assign student");
+        errorTimerRef.current = setTimeout(() => setError(null), 8000);
+        return;
+      }
+
+      if ("requiresConfirmation" in result) {
+        setAssignWarnings(result.warnings);
+        return;
+      }
+
+      const studentName = assigningStudent.full_name ?? "Student";
+      closeAssignDialog();
+      pushSuccessMessage(`${studentName} assigned to group.`);
+      router.refresh();
+    } catch (assignError) {
+      console.error("assignStudentToGroup error:", assignError);
+      setError("Failed to assign student. Check the terminal for details.");
+      errorTimerRef.current = setTimeout(() => setError(null), 8000);
+    } finally {
+      setAssigningToGroup(false);
+    }
+  }
+
+  async function handleRemoveMember(groupId: string, member: GroupMember) {
+    const memberKey = `${groupId}:${member.user_id}`;
+    const profile = getMemberProfile(member);
+
+    setRemovingMemberKey(memberKey);
+    setError(null);
+    setSuccessMessage(null);
+    clearErrorTimer();
+    clearSuccessTimer();
+
+    try {
+      const result = await removeStudentFromGroup({
+        groupId,
+        userId: member.user_id,
+      });
+
+      if ("error" in result) {
+        setError(result.error ?? "Failed to remove student from group");
+        errorTimerRef.current = setTimeout(() => setError(null), 8000);
+        return;
+      }
+
+      pushSuccessMessage(
+        `${profile?.full_name ?? "Student"} removed from the group.`,
+      );
+      router.refresh();
+    } catch (removeError) {
+      console.error("removeStudentFromGroup error:", removeError);
+      setError("Failed to remove student. Check the terminal for details.");
+      errorTimerRef.current = setTimeout(() => setError(null), 8000);
+    } finally {
+      setRemovingMemberKey(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
+      <ManagementDialog
+        open={createGroupOpen}
+        title="Create group"
+        description="Manual groups still follow the app's 1-hour meeting model. Pick a start time, and the end time is set automatically."
+        onClose={closeCreateGroupDialog}
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="create-group-day">Day of week</Label>
+            <select
+              id="create-group-day"
+              className={FIELD_CLASSNAME}
+              value={String(createForm.dayOfWeek)}
+              disabled={creatingGroup}
+              onChange={(event) => {
+                setCreateWarnings([]);
+                setCreateForm((current) => ({
+                  ...current,
+                  dayOfWeek: Number(event.target.value),
+                }));
+              }}
+            >
+              {DAY_NAMES.map((dayName, index) => (
+                <option key={dayName} value={index}>
+                  {dayName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="create-group-start">Start time</Label>
+            <select
+              id="create-group-start"
+              className={FIELD_CLASSNAME}
+              value={getInputTimeValue(createForm.meetStartTime)}
+              disabled={creatingGroup}
+              onChange={(event) => {
+                setCreateWarnings([]);
+                setCreateForm((current) => ({
+                  ...current,
+                  meetStartTime: `${event.target.value}:00`,
+                }));
+              }}
+            >
+              {GROUP_TIME_OPTIONS.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="create-group-end">End time</Label>
+            <Input
+              id="create-group-end"
+              value={getInputTimeValue(createMeeting.meetEndTime)}
+              readOnly
+              disabled
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="create-group-preference">Preference</Label>
+          <select
+            id="create-group-preference"
+            className={FIELD_CLASSNAME}
+            value={createForm.preference}
+            disabled={creatingGroup}
+            onChange={(event) => {
+              setCreateWarnings([]);
+              setCreateForm((current) => ({
+                ...current,
+                preference: event.target.value as GroupPreference,
+              }));
+            }}
+          >
+            <option value="in_person">In-person</option>
+            <option value="online">Online</option>
+          </select>
+        </div>
+
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+          <p className="font-medium">Meeting preview</p>
+          <p className="text-muted-foreground">
+            {getMeetingLabel(createMeeting)} •{" "}
+            {formatManualPreference(createMeeting.preference)}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label>Students</Label>
+            <span className="text-muted-foreground text-xs">
+              {createForm.studentIds.length} selected
+            </span>
+          </div>
+
+          {ungroupedStudents.length === 0 ? (
+            <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+              No ungrouped students are available. You can still create an empty
+              group.
+            </p>
+          ) : (
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-2">
+              {ungroupedStudents.map((student) => {
+                const checked = createForm.studentIds.includes(student.user_id);
+                return (
+                  <label
+                    key={student.user_id}
+                    className="flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2 transition-colors hover:bg-muted/40"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={checked}
+                      disabled={creatingGroup}
+                      onChange={(event) => {
+                        setCreateWarnings([]);
+                        setCreateForm((current) => ({
+                          ...current,
+                          studentIds: event.target.checked
+                            ? [...current.studentIds, student.user_id]
+                            : current.studentIds.filter(
+                                (studentId) => studentId !== student.user_id,
+                              ),
+                        }));
+                      }}
+                    />
+                    <div className="space-y-0.5">
+                      <p className="font-medium">
+                        {student.full_name ?? "No name provided"}
+                      </p>
+                      <p className="text-muted-foreground text-sm">
+                        {student.email ?? "No email"}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {formatStudyMode(student.preference)}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <CompatibilityWarningsCallout warnings={createWarnings} />
+
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={creatingGroup}
+            onClick={closeCreateGroupDialog}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={creatingGroup}
+            onClick={() => handleCreateGroup(createWarnings.length > 0)}
+          >
+            {creatingGroup
+              ? "Creating..."
+              : createWarnings.length > 0
+                ? "Create anyway"
+                : "Create group"}
+          </Button>
+        </div>
+      </ManagementDialog>
+
+      <ManagementDialog
+        open={assigningStudent !== null}
+        title="Assign student to group"
+        description="Choose an existing group. If the schedule or preference does not fit, the app will warn you before the assignment is committed."
+        onClose={closeAssignDialog}
+      >
+        <div className="space-y-2">
+          <Label>Student</Label>
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <p className="font-medium">
+              {assigningStudent?.full_name ?? "No name provided"}
+            </p>
+            <p className="text-muted-foreground">
+              {assigningStudent?.email ?? "No email"} •{" "}
+              {formatStudyMode(assigningStudent?.preference ?? "no_preference")}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="assign-group">Target group</Label>
+          <select
+            id="assign-group"
+            className={FIELD_CLASSNAME}
+            value={assignGroupId}
+            disabled={assigningToGroup || groups.length === 0}
+            onChange={(event) => {
+              setAssignWarnings([]);
+              setAssignGroupId(event.target.value);
+            }}
+          >
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {formatMeeting(group)} • {formatPreference(group.preference)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {selectedAssignGroup ? (
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+            <p className="font-medium">Selected group</p>
+            <p className="text-muted-foreground">
+              {formatMeeting(selectedAssignGroup)} •{" "}
+              {formatPreference(selectedAssignGroup.preference)}
+            </p>
+          </div>
+        ) : (
+          <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+            No groups exist yet. Create one first.
+          </p>
+        )}
+
+        <CompatibilityWarningsCallout warnings={assignWarnings} />
+
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={assigningToGroup}
+            onClick={closeAssignDialog}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={assigningToGroup || !selectedAssignGroup}
+            onClick={() => handleAssignStudent(assignWarnings.length > 0)}
+          >
+            {assigningToGroup
+              ? "Assigning..."
+              : assignWarnings.length > 0
+                ? "Assign anyway"
+                : "Assign to group"}
+          </Button>
+        </div>
+      </ManagementDialog>
+
       <div className="flex items-end justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-baseline gap-3">
@@ -283,6 +793,10 @@ export default function AdminGroupsClient({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Button type="button" disabled={busy} onClick={openCreateGroupDialog}>
+            <Plus className="h-4 w-4" />
+            Create group
+          </Button>
           {hasGroups && confirmRegen ? (
             <>
               <p className="text-muted-foreground text-xs">
@@ -290,7 +804,7 @@ export default function AdminGroupsClient({
               </p>
               <Button
                 onClick={() => runMatching("regroup_all")}
-                disabled={loading}
+                disabled={busy}
                 size="sm"
               >
                 <RefreshCcw className={cn(loading && "animate-spin")} />
@@ -300,7 +814,7 @@ export default function AdminGroupsClient({
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={loading}
+                disabled={busy}
                 onClick={() => setConfirmRegen(false)}
               >
                 Cancel
@@ -312,7 +826,7 @@ export default function AdminGroupsClient({
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={loading}
+                  disabled={busy}
                   onClick={() => runMatching("group_ungrouped")}
                 >
                   <Users
@@ -328,7 +842,7 @@ export default function AdminGroupsClient({
               <Button
                 type="button"
                 variant={hasGroups ? "outline" : "default"}
-                disabled={loading}
+                disabled={busy}
                 onClick={
                   hasGroups
                     ? () => setConfirmRegen(true)
@@ -364,6 +878,27 @@ export default function AdminGroupsClient({
             onClick={() => {
               setError(null);
               clearErrorTimer();
+            }}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Dismiss</span>
+          </button>
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900 animate-in fade-in slide-in-from-top-1 duration-200 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
+        >
+          <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <p className="flex-1">{successMessage}</p>
+          <button
+            type="button"
+            className="shrink-0 rounded-sm p-0.5 opacity-70 transition-opacity hover:opacity-100"
+            onClick={() => {
+              setSuccessMessage(null);
+              clearSuccessTimer();
             }}
           >
             <X className="h-4 w-4" />
@@ -448,7 +983,7 @@ export default function AdminGroupsClient({
           <CardContent className="flex flex-col items-start gap-3">
             <Button
               onClick={() => runMatching("regroup_all")}
-              disabled={loading}
+              disabled={busy}
             >
               <Users />
               {loading ? "Generating..." : "Generate groups"}
@@ -582,7 +1117,7 @@ export default function AdminGroupsClient({
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6"
-                                disabled={loading}
+                                disabled={busy}
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">
@@ -591,10 +1126,6 @@ export default function AdminGroupsClient({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem disabled>
-                                <Pencil className="size-4" />
-                                Edit
-                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
                                 disabled={deletingGroupId === group.id}
@@ -633,14 +1164,34 @@ export default function AdminGroupsClient({
                                     return (
                                       <li
                                         key={member.user_id}
-                                        className="flex flex-wrap items-center gap-x-2 gap-y-1"
+                                        className="flex flex-wrap items-center justify-between gap-2"
                                       >
-                                        <span className="font-medium">
-                                          {profile?.full_name ?? "Unknown"}
-                                        </span>
-                                        <span className="text-muted-foreground">
-                                          {profile?.email ?? "No email"}
-                                        </span>
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                          <span className="font-medium">
+                                            {profile?.full_name ?? "Unknown"}
+                                          </span>
+                                          <span className="text-muted-foreground">
+                                            {profile?.email ?? "No email"}
+                                          </span>
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          size="xs"
+                                          variant="ghost"
+                                          disabled={
+                                            busy ||
+                                            removingMemberKey ===
+                                              `${group.id}:${member.user_id}`
+                                          }
+                                          onClick={() =>
+                                            handleRemoveMember(group.id, member)
+                                          }
+                                        >
+                                          {removingMemberKey ===
+                                          `${group.id}:${member.user_id}`
+                                            ? "Removing..."
+                                            : "Remove"}
+                                        </Button>
                                       </li>
                                     );
                                   })(),
@@ -740,14 +1291,17 @@ export default function AdminGroupsClient({
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
-                            disabled={loading}
+                            disabled={busy}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Open row actions</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem disabled>
+                          <DropdownMenuItem
+                            disabled={groups.length === 0}
+                            onClick={() => openAssignDialog(student)}
+                          >
                             Assign to group
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -760,6 +1314,83 @@ export default function AdminGroupsClient({
           </Table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function ManagementDialog({
+  open,
+  title,
+  description,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="w-full max-w-2xl rounded-lg border bg-background shadow-xl"
+      >
+        <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <p className="text-muted-foreground text-sm">{description}</p>
+          </div>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+
+        <div className="space-y-4 px-5 py-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function CompatibilityWarningsCallout({
+  warnings,
+}: {
+  warnings: CompatibilityWarning[];
+}) {
+  if (warnings.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50/80 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950/30">
+      <div className="flex items-start gap-3">
+        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+        <div className="space-y-2">
+          <p className="font-medium text-amber-950 dark:text-amber-100">
+            Review these warnings before confirming
+          </p>
+          <ul className="space-y-2 text-amber-900 dark:text-amber-200">
+            {warnings.map((warning) => (
+              <li key={warning.userId} className="rounded-md border border-amber-200/80 px-3 py-2 dark:border-amber-800/80">
+                <p className="font-medium">{warning.studentName}</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {warning.messages.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
