@@ -1336,12 +1336,12 @@ function ManagementDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/45 p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-2xl rounded-lg border bg-background shadow-xl"
+        className="mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col rounded-lg border bg-background shadow-xl"
       >
         <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
           <div className="space-y-1">
@@ -1354,7 +1354,7 @@ function ManagementDialog({
           </Button>
         </div>
 
-        <div className="space-y-4 px-5 py-4">{children}</div>
+        <div className="space-y-4 overflow-y-auto px-5 py-4">{children}</div>
       </div>
     </div>
   );
