@@ -5,13 +5,17 @@ import {
   ChevronUp,
   ChevronsDownUp,
   ChevronsUpDown,
+  CircleAlert,
+  CircleCheck,
   MoreHorizontal,
   Pencil,
   RefreshCcw,
   Trash2,
+  TriangleAlert,
   Users,
+  X,
 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { runMatchingAction } from "@/lib/actions/admin-actions";
 import { Button } from "@/components/ui/button";
@@ -72,6 +76,8 @@ type MatchingResult = {
   flaggedCount: number;
   flagged: FlaggedStudent[];
 };
+
+type MatchingMode = "regroup_all" | "group_ungrouped";
 
 type UngroupedStudent = {
   user_id: string;
@@ -165,37 +171,78 @@ export default function AdminGroupsClient({
 }) {
   const router = useRouter();
 
-  const [loading, setLoading] = useState(false);
+  const [loadingMode, setLoadingMode] = useState<MatchingMode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<MatchingResult | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [showFlagged, setShowFlagged] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(
     () => new Set(),
   );
 
-  const hasGroups = groups.length > 0;
+  const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function runMatching() {
+  const clearResultTimer = useCallback(() => {
+    if (resultTimerRef.current) {
+      clearTimeout(resultTimerRef.current);
+      resultTimerRef.current = null;
+    }
+  }, []);
+
+  const clearErrorTimer = useCallback(() => {
+    if (errorTimerRef.current) {
+      clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearResultTimer();
+      clearErrorTimer();
+    };
+  }, [clearResultTimer, clearErrorTimer]);
+
+  const hasGroups = groups.length > 0;
+  const loading = loadingMode !== null;
+
+  async function runMatching(mode: MatchingMode) {
     setError(null);
     setLastResult(null);
+    setShowResult(false);
+    setShowFlagged(false);
     setConfirmRegen(false);
-    setLoading(true);
+    setLoadingMode(mode);
+    clearResultTimer();
+    clearErrorTimer();
 
     try {
-      const result = await runMatchingAction();
+      const result = await runMatchingAction(mode);
 
       if ("error" in result) {
         setError(result.error ?? "Something went wrong");
+        errorTimerRef.current = setTimeout(() => setError(null), 8000);
         return;
       }
 
-      setLastResult(result as MatchingResult);
+      const matchResult = result as MatchingResult;
+      setLastResult(matchResult);
+      setShowResult(true);
+      setShowFlagged(matchResult.flaggedCount > 0);
+
+      if (matchResult.flaggedCount === 0) {
+        resultTimerRef.current = setTimeout(() => setShowResult(false), 6000);
+      }
+
       router.refresh();
     } catch (err) {
       setError("Something went wrong. Check the terminal for details.");
+      errorTimerRef.current = setTimeout(() => setError(null), 8000);
       console.error("runMatchingAction error:", err);
     } finally {
-      setLoading(false);
+      setLoadingMode(null);
     }
   }
 
@@ -218,9 +265,13 @@ export default function AdminGroupsClient({
           {hasGroups && confirmRegen ? (
             <>
               <p className="text-muted-foreground text-xs">
-                This adds new groups on top of existing ones.
+                This will delete current groups and regroup every student.
               </p>
-              <Button onClick={runMatching} disabled={loading} size="sm">
+              <Button
+                onClick={() => runMatching("regroup_all")}
+                disabled={loading}
+                size="sm"
+              >
                 <RefreshCcw className={cn(loading && "animate-spin")} />
                 {loading ? "Running..." : "Confirm"}
               </Button>
@@ -235,19 +286,40 @@ export default function AdminGroupsClient({
               </Button>
             </>
           ) : (
-            <Button
-              type="button"
-              variant={hasGroups ? "outline" : "default"}
-              disabled={loading}
-              onClick={hasGroups ? () => setConfirmRegen(true) : runMatching}
-            >
-              <RefreshCcw className={cn(loading && "animate-spin")} />
-              {loading
-                ? "Running..."
-                : hasGroups
-                  ? "Regenerate groups"
-                  : "Generate groups"}
-            </Button>
+            <>
+              {hasGroups && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={() => runMatching("group_ungrouped")}
+                >
+                  <Users className={cn(loadingMode === "group_ungrouped" && "animate-pulse")} />
+                  {loadingMode === "group_ungrouped"
+                    ? "Grouping..."
+                    : "Group ungrouped students"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant={hasGroups ? "outline" : "default"}
+                disabled={loading}
+                onClick={
+                  hasGroups
+                    ? () => setConfirmRegen(true)
+                    : () => runMatching("regroup_all")
+                }
+              >
+                <RefreshCcw
+                  className={cn(loadingMode === "regroup_all" && "animate-spin")}
+                />
+                {loadingMode === "regroup_all"
+                  ? "Running..."
+                  : hasGroups
+                    ? "Regenerate groups"
+                    : "Generate groups"}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -255,42 +327,80 @@ export default function AdminGroupsClient({
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200"
         >
-          {error}
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="flex-1">{error}</p>
+          <button
+            type="button"
+            className="shrink-0 rounded-sm p-0.5 opacity-70 hover:opacity-100 transition-opacity"
+            onClick={() => {
+              setError(null);
+              clearErrorTimer();
+            }}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Dismiss</span>
+          </button>
         </div>
       )}
 
-      {lastResult && (
-        <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-          Last run created {lastResult.groupsCreated}{" "}
-          {lastResult.groupsCreated === 1 ? "group" : "groups"}.{" "}
-          {lastResult.flaggedCount === 0
-            ? "All students were placed."
-            : `${lastResult.flaggedCount} student${lastResult.flaggedCount === 1 ? "" : "s"} could not be placed.`}
+      {lastResult && showResult && (
+        <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200 animate-in fade-in slide-in-from-top-1 duration-200">
+          <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <p className="flex-1">
+            Created {lastResult.groupsCreated}{" "}
+            {lastResult.groupsCreated === 1 ? "group" : "groups"}.{" "}
+            {lastResult.flaggedCount === 0
+              ? "All students were placed."
+              : `${lastResult.flaggedCount} student${lastResult.flaggedCount === 1 ? "" : "s"} could not be placed.`}
+          </p>
+          <button
+            type="button"
+            className="shrink-0 rounded-sm p-0.5 opacity-70 hover:opacity-100 transition-opacity"
+            onClick={() => {
+              setShowResult(false);
+              clearResultTimer();
+            }}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Dismiss</span>
+          </button>
         </div>
       )}
 
-      {lastResult && lastResult.flaggedCount > 0 && (
-        <div className="rounded-lg border border-amber-300/70 bg-amber-50/70 px-4 py-4">
-          <div className="space-y-1">
-            <h2 className="text-sm font-medium text-amber-900">
-              Unplaced Students ({lastResult.flaggedCount})
-            </h2>
-            <p className="text-sm text-amber-800">
-              These students could not be matched into a valid 2-hour group.
-            </p>
+      {lastResult && showFlagged && lastResult.flaggedCount > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-4 dark:border-amber-800 dark:bg-amber-950/30 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-start gap-3">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1 space-y-1">
+              <h2 className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                {lastResult.flaggedCount} unplaced{" "}
+                {lastResult.flaggedCount === 1 ? "student" : "students"}
+              </h2>
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                Could not be matched into a valid 1-hour group.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 rounded-sm p-0.5 text-amber-700 opacity-70 hover:opacity-100 transition-opacity dark:text-amber-300"
+              onClick={() => setShowFlagged(false)}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Dismiss</span>
+            </button>
           </div>
-          <ul className="mt-3 space-y-1.5 text-sm">
+          <ul className="mt-3 ml-7 space-y-1.5 text-sm">
             {lastResult.flagged.map((student) => (
               <li
                 key={student.user_id}
-                className="flex flex-wrap items-center gap-x-2 gap-y-1 text-amber-950"
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 text-amber-950 dark:text-amber-100"
               >
                 <span className="font-medium">
                   {student.full_name || "Unknown"}
                 </span>
-                <span className="font-mono text-xs text-amber-800">
+                <span className="font-mono text-xs text-amber-800 dark:text-amber-400">
                   {student.user_id.slice(0, 8)}
                 </span>
               </li>
@@ -309,7 +419,10 @@ export default function AdminGroupsClient({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-start gap-3">
-            <Button onClick={runMatching} disabled={loading}>
+            <Button
+              onClick={() => runMatching("regroup_all")}
+              disabled={loading}
+            >
               <Users />
               {loading ? "Generating..." : "Generate groups"}
             </Button>

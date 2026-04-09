@@ -9,14 +9,22 @@ type StudentProfileRow = {
   user_id: string;
   full_name: string | null;
   preference: "in_person" | "online" | "no_preference" | null;
+  member_of?: {
+    group_id: string;
+  }[] | null;
 };
 
 type AvailabilityRow = {
   user_id: string;
   time_slot_id: number;
-  time_slot: {
-    slot_index: number;
-  }[];
+  time_slot:
+    | {
+        slot_index: number;
+      }
+    | {
+        slot_index: number;
+      }[]
+    | null;
 };
 
 type MatchingStudent = {
@@ -29,19 +37,7 @@ type MatchingStudent = {
   }[];
 };
 
-type MatchingGroup = {
-  members: { user_id: string }[];
-  window: {
-    startIndex: number;
-    day: number;
-  };
-  preference: string;
-};
-
-type FlaggedStudent = {
-  user_id: string;
-  full_name: string;
-};
+type MatchingMode = "regroup_all" | "group_ungrouped";
 
 export async function removeStudent(studentId: string) {
   const supabase = await createClient();
@@ -104,7 +100,9 @@ function slotIndexToTime(slotIndex: number, day: number) {
   return `${String(hourOfDay).padStart(2, "0")}:00:00`;
 }
 
-export async function runMatchingAction() {
+export async function runMatchingAction(
+  mode: MatchingMode = "group_ungrouped",
+) {
   const supabase = await createClient();
 
   // confirm the caller is an admin
@@ -126,10 +124,11 @@ export async function runMatchingAction() {
     return { error: "Admin only" };
   }
 
-  // fetch all student profiles
+  // fetch all student profiles so we can either regroup everyone or only place
+  // students who are not already in a group
   const { data: studentProfiles, error: profileError } = await supabase
     .from("profile")
-    .select("user_id, full_name, preference")
+    .select("user_id, full_name, preference, member_of(group_id)")
     .eq("role", "student");
 
   if (profileError) {
@@ -153,7 +152,9 @@ export async function runMatchingAction() {
     { time_slot_id: number; slot_index: number }[]
   > = {};
   for (const row of (availabilityRows ?? []) as AvailabilityRow[]) {
-    const slot = row.time_slot?.[0];
+    const slot = Array.isArray(row.time_slot)
+      ? row.time_slot[0]
+      : row.time_slot;
     if (!slot) {
       continue;
     }
@@ -168,17 +169,44 @@ export async function runMatchingAction() {
   }
 
   // build the student array the algorithm expects
-  const students: MatchingStudent[] = ((studentProfiles ?? []) as StudentProfileRow[]).map((p) => ({
-    user_id: p.user_id,
-    full_name: p.full_name ?? "Unknown",
-    preference: p.preference ?? "no_preference",
-    availability: availabilityByUser[p.user_id] ?? [],
-  }));
+  const students: MatchingStudent[] = (
+    (studentProfiles ?? []) as StudentProfileRow[]
+  )
+    .filter((profileRow) =>
+      mode === "regroup_all"
+        ? true
+        : !profileRow.member_of || profileRow.member_of.length === 0,
+    )
+    .map((p) => ({
+      user_id: p.user_id,
+      full_name: p.full_name ?? "Unknown",
+      preference: p.preference ?? "no_preference",
+      availability: availabilityByUser[p.user_id] ?? [],
+    }));
 
-  const { groups, flagged } = runMatchingAlgorithm(students) as {
-    groups: MatchingGroup[];
-    flagged: FlaggedStudent[];
-  };
+  const { groups, flagged } = runMatchingAlgorithm(students);
+
+  if (mode === "regroup_all") {
+    const { error: memberDeleteError } = await supabase
+      .from("member_of")
+      .delete()
+      .not("group_id", "is", null);
+
+    if (memberDeleteError) {
+      console.error("Error clearing group memberships:", memberDeleteError);
+      return { error: "Failed to clear existing group memberships" };
+    }
+
+    const { error: groupDeleteError } = await supabase
+      .from("group")
+      .delete()
+      .not("id", "is", null);
+
+    if (groupDeleteError) {
+      console.error("Error clearing existing groups:", groupDeleteError);
+      return { error: "Failed to clear existing groups" };
+    }
+  }
 
   let groupsCreated = 0;
 
@@ -188,7 +216,7 @@ export async function runMatchingAction() {
       group.window.day,
     );
     const endTime = slotIndexToTime(
-      group.window.startIndex + 2,
+      group.window.startIndex + 1,
       group.window.day,
     );
 
