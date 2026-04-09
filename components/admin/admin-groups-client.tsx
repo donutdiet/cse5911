@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { runMatchingAction } from "@/lib/actions/admin-actions";
+import { runMatchingAction, deleteGroup } from "@/lib/actions/admin-actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -180,6 +180,7 @@ export default function AdminGroupsClient({
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
 
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -246,19 +247,39 @@ export default function AdminGroupsClient({
     }
   }
 
+  async function handleDeleteGroup(groupId: string) {
+    setDeletingGroupId(groupId);
+    setError(null);
+    clearErrorTimer();
+
+    try {
+      const result = await deleteGroup(groupId);
+
+      if ("error" in result) {
+        setError(result.error ?? "Failed to delete group");
+        errorTimerRef.current = setTimeout(() => setError(null), 8000);
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError("Failed to delete group. Check the terminal for details.");
+      errorTimerRef.current = setTimeout(() => setError(null), 8000);
+    } finally {
+      setDeletingGroupId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-end justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-baseline gap-3">
-            <h1 className="text-xl font-semibold">Groups</h1>
+            <h1 className="text-xl font-semibold leading-none">Groups</h1>
             <p className="text-muted-foreground text-sm">
               {groups.length} {groups.length === 1 ? "group" : "groups"}
             </p>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Review generated meeting groups and expand a row to see members.
-          </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -294,7 +315,11 @@ export default function AdminGroupsClient({
                   disabled={loading}
                   onClick={() => runMatching("group_ungrouped")}
                 >
-                  <Users className={cn(loadingMode === "group_ungrouped" && "animate-pulse")} />
+                  <Users
+                    className={cn(
+                      loadingMode === "group_ungrouped" && "animate-pulse",
+                    )}
+                  />
                   {loadingMode === "group_ungrouped"
                     ? "Grouping..."
                     : "Group ungrouped students"}
@@ -311,7 +336,9 @@ export default function AdminGroupsClient({
                 }
               >
                 <RefreshCcw
-                  className={cn(loadingMode === "regroup_all" && "animate-spin")}
+                  className={cn(
+                    loadingMode === "regroup_all" && "animate-spin",
+                  )}
                 />
                 {loadingMode === "regroup_all"
                   ? "Running..."
@@ -527,9 +554,8 @@ export default function AdminGroupsClient({
                           <div className="font-medium">
                             {formatMeeting(group)}
                           </div>
-                          <div className="text-muted-foreground text-xs">
-                            {formatTime(group.meet_start_time)} to{" "}
-                            {formatTime(group.meet_end_time)}
+                          <div className="text-muted-foreground text-xs italic">
+                            Building TBD
                           </div>
                         </div>
                       </TableCell>
@@ -569,9 +595,15 @@ export default function AdminGroupsClient({
                                 <Pencil className="size-4" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem variant="destructive" disabled>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                disabled={deletingGroupId === group.id}
+                                onClick={() => handleDeleteGroup(group.id)}
+                              >
                                 <Trash2 className="size-4" />
-                                Delete
+                                {deletingGroupId === group.id
+                                  ? "Deleting..."
+                                  : "Delete"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -629,7 +661,7 @@ export default function AdminGroupsClient({
 
       <section className="space-y-4 pt-4">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-lg font-semibold">Ungrouped Students</h2>
+          <h2 className="text-lg font-semibold leading-none">Ungrouped Students</h2>
           <p className="text-muted-foreground text-sm">
             {ungroupedStudents.length}{" "}
             {ungroupedStudents.length === 1 ? "student" : "students"}

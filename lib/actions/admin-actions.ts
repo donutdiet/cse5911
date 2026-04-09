@@ -90,6 +90,51 @@ export async function removeStudent(studentId: string) {
   revalidatePath("/admin/roster");
 }
 
+export async function deleteGroup(groupId: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { error: "Not logged in" };
+  }
+
+  const { data: profile } = await supabase
+    .from("profile")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
+    return { error: "Admin only" };
+  }
+
+  const { error: memberError } = await supabase
+    .from("member_of")
+    .delete()
+    .eq("group_id", groupId);
+
+  if (memberError) {
+    console.error("Error deleting group members:", memberError);
+    return { error: "Failed to delete group members" };
+  }
+
+  const { error: groupError } = await supabase
+    .from("group")
+    .delete()
+    .eq("id", groupId);
+
+  if (groupError) {
+    console.error("Error deleting group:", groupError);
+    return { error: "Failed to delete group" };
+  }
+
+  revalidatePath("/admin/groups");
+  return { success: true };
+}
+
 /*
   Converts a slot_index back to a time string like "10:00:00".
   slot_index = (day * 16) + position, position 0 = 7am, each slot is 1 hour.
