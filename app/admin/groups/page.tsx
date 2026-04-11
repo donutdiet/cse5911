@@ -11,6 +11,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AdminGroupsClient from "@/components/admin/admin-groups-client";
+import { createClient } from "@/lib/supabase/server";
 
 type UngroupedStudent = {
   user_id: string;
@@ -22,35 +23,7 @@ type UngroupedStudent = {
 };
 
 export default async function AdminGroupsPage() {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    },
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profile")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") redirect("/student/dashboard");
+  const supabase = await createClient();
 
   // fetch all groups with their members and member profiles
   const { data: groups } = await supabase
