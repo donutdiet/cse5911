@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Users, LayoutGrid, Calendar, Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const tabs = [
   { label: "Roster", href: "/admin/roster", icon: Users },
@@ -17,8 +18,12 @@ export function AdminNavbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative">
-      <div className="hidden md:flex items-center gap-1">
+    <div className="flex items-center gap-3">
+      <Button asChild variant="outline" size="sm">
+        <Link href="/student">Student view</Link>
+      </Button>
+      <div className="relative">
+        <div className="hidden md:flex items-center gap-1">
         {tabs.map(({ label, href, icon: Icon }) => {
           const isActive =
             pathname === href || pathname.startsWith(href + "/");
@@ -39,8 +44,8 @@ export function AdminNavbar() {
             </Link>
           );
         })}
-      </div>
-      <div className="md:hidden">
+        </div>
+        <div className="md:hidden">
         <button
           onClick={() => setOpen(!open)}
           className="flex items-center gap-2 rounded-md px-3 py-2 border"
@@ -73,6 +78,7 @@ export function AdminNavbar() {
             })}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
