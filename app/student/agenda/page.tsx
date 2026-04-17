@@ -45,6 +45,10 @@ type AgendaSummary = {
   groupProgressPercent: number;
 };
 
+type GroupMember = {
+  user_id: string;
+};
+
 type StudentAgendaPageProps = {
   searchParams?: Promise<{
     agenda?: string;
@@ -86,12 +90,26 @@ export default async function StudentAgendaPage({
     );
   }
 
-  const { data: members } = await supabase
-    .from("member_of")
-    .select("user_id")
-    .eq("group_id", membership.group_id);
+  const { data: membersData, error: membersError } = await supabase.rpc(
+    "get_my_group_members",
+  );
 
-  const memberIds = (members ?? []).map((member) => member.user_id);
+  if (membersError) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+          <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
+          <p className="mt-2 text-sm text-red-700">
+            There was a problem loading your group members. Please try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const memberIds = (membersData ?? []).map(
+    (member: GroupMember) => member.user_id,
+  );
 
   const { data: agendasData, error: agendasError } = await supabase
     .from("agenda")
@@ -139,53 +157,88 @@ export default async function StudentAgendaPage({
     ),
   );
 
-  const myCompletionsResult =
-    allTaskIds.length > 0
-      ? await supabase
-          .from("task_completion")
-          .select("task_id, completed")
-          .eq("user_id", user.id)
-          .in("task_id", allTaskIds)
-      : { data: [] as { task_id: number; completed: boolean }[] };
+  const {
+    data: myCompletions,
+    error: myCompletionsError,
+  } = allTaskIds.length > 0
+    ? await supabase
+        .from("task_completion")
+        .select("task_id, completed")
+        .eq("user_id", user.id)
+        .in("task_id", allTaskIds)
+    : {
+        data: [] as { task_id: number; completed: boolean }[],
+        error: null,
+      };
 
-  const groupCompletionsResult =
-    allTaskIds.length > 0 && memberIds.length > 0
-      ? await supabase
-          .from("task_completion")
-          .select("user_id, task_id, completed")
-          .in("user_id", memberIds)
-          .in("task_id", allTaskIds)
-      : {
-          data: [] as { user_id: string; task_id: number; completed: boolean }[],
-        };
+  const {
+    data: groupCompletions,
+    error: groupCompletionsError,
+  } = allTaskIds.length > 0 && memberIds.length > 0
+    ? await supabase
+        .from("task_completion")
+        .select("user_id, task_id, completed")
+        .in("user_id", memberIds)
+        .in("task_id", allTaskIds)
+    : {
+        data: [] as { user_id: string; task_id: number; completed: boolean }[],
+        error: null,
+      };
 
-  const myCompletions = myCompletionsResult.data ?? [];
-  const groupCompletions = groupCompletionsResult.data ?? [];
+  if (myCompletionsError || groupCompletionsError) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+          <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
+          <p className="mt-2 text-sm text-red-700">
+            There was a problem loading task progress. Please try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const myCompletedTaskSet = new Set(
-    myCompletions.filter((row) => row.completed).map((row) => row.task_id),
+    (myCompletions ?? [])
+      .filter((row) => row.completed)
+      .map((row) => row.task_id),
   );
+
+  const agendaTaskIdsByAgenda = new Map<number, number[]>();
+  const taskIdToAgendaId = new Map<number, number>();
+
+  for (const agenda of agendas) {
+    const agendaTaskIds = (agenda.sections ?? []).flatMap((section) =>
+      (section.tasks ?? []).map((task) => task.id),
+    );
+
+    agendaTaskIdsByAgenda.set(agenda.id, agendaTaskIds);
+
+    for (const taskId of agendaTaskIds) {
+      taskIdToAgendaId.set(taskId, agenda.id);
+    }
+  }
 
   const groupCompletedTaskCountByAgenda = new Map<number, number>();
 
   for (const agenda of agendas) {
-    const agendaTaskIds = new Set(
-      (agenda.sections ?? []).flatMap((section) =>
-        (section.tasks ?? []).map((task) => task.id),
-      ),
+    groupCompletedTaskCountByAgenda.set(agenda.id, 0);
+  }
+
+  for (const row of groupCompletions ?? []) {
+    if (!row.completed) continue;
+
+    const agendaId = taskIdToAgendaId.get(row.task_id);
+    if (agendaId === undefined) continue;
+
+    groupCompletedTaskCountByAgenda.set(
+      agendaId,
+      (groupCompletedTaskCountByAgenda.get(agendaId) ?? 0) + 1,
     );
-
-    const completedCount = groupCompletions.filter(
-      (row) => row.completed && agendaTaskIds.has(row.task_id),
-    ).length;
-
-    groupCompletedTaskCountByAgenda.set(agenda.id, completedCount);
   }
 
   const agendaSummaries: AgendaSummary[] = agendas.map((agenda) => {
-    const agendaTaskIds = (agenda.sections ?? []).flatMap((section) =>
-      (section.tasks ?? []).map((task) => task.id),
-    );
+    const agendaTaskIds = agendaTaskIdsByAgenda.get(agenda.id) ?? [];
 
     const completedTaskIds = agendaTaskIds.filter((taskId) =>
       myCompletedTaskSet.has(taskId),
