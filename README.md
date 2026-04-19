@@ -1,24 +1,61 @@
+# 🚀 AnatWithMe
+📌 This application is meant to help anatomy students schedule student groups. They are matched based on their selected availability and if they want to meet in-person or online. The admins are able to manually adjust selected groups and import assignment links for each weekly agenda.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## ✨ Key Features
+## 👨‍🏫 Admin Features
+- View full roster of registered students
+- Generate student groups based on availability
+- Manually adjust group assignments
+- Remove or reassign students from groups
+- Regenerate groups when needed
+- Add tasks and links to weekly agendas
 
-First, run the development server:
+## 🎓 Student Features
+- Select weekly availability in hourly time slots
+- Choose meeting preference (online or in-person)
+- View assigned group members after matching
+- Edit personal profile information
+- 
+## ⚙️ Getting Started
 
+1. Install dependencies
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+2. Run the development server
 ```bash
 npm run dev
 # or
 yarn dev
 # or
 pnpm dev
-# or
-bun dev
 ```
+3. Open your browser and go to:
+👉 http://localhost:3000
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🧱 Project Structure
+- app/page.tsx        # Main landing page
+- app/layout.tsx      # Root layout
+- components/       # Reusable UI components
+- public/           # Static assets
+- styles/           # Global styles
+
+## 🎨 Tech Stack
+- Next.js (App Router)
+- React
+- TypeScript
+- next/font (Geist font optimization)
+- Vercel (deployment)
 
 ## Learn More
 
