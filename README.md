@@ -1,6 +1,8 @@
 # 🚀 AnatWithMe
 📌 This application is meant to help anatomy students schedule student groups. They are matched based on their selected availability and if they want to meet in-person or online. The admins are able to manually adjust selected groups and import assignment links for each weekly agenda.
 
+Documentation PDF: [5911 Hand Off Documentation.pdf](https://github.com/user-attachments/files/26911859/5911.Hand.Off.Documentation.pdf)
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## 👨‍🏫 Admin Features
