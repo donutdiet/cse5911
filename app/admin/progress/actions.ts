@@ -99,7 +99,7 @@ export async function runSemesterRollover(args: {
   const adminCheck = await requireAdmin(supabase);
   if ("error" in adminCheck) {
     return {
-      error: adminCheck.error,
+      error: adminCheck.error ?? "Admin only",
       summary: { ...EMPTY_SUMMARY },
       completedSteps: [],
     };
