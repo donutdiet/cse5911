@@ -19,6 +19,12 @@ type RoomInput = {
   days: number[];
 };
 
+type NormalizedRoomInputResult =
+  | { error: string }
+  | {
+      value: RoomInput;
+    };
+
 async function requireAdmin(supabase: SupabaseClient) {
   const {
     data: { user },
@@ -47,7 +53,7 @@ async function requireAdmin(supabase: SupabaseClient) {
   return { userId: user.id } as const;
 }
 
-function normalizeRoomInput(input: RoomInput) {
+function normalizeRoomInput(input: RoomInput): NormalizedRoomInputResult {
   const building = input.building.trim();
   const roomNumber = input.roomNumber.trim();
 
