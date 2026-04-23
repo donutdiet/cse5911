@@ -5,6 +5,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { runMatchingAlgorithm } from "@/lib/matching";
 import {
+  assignRoomsToGroups,
+  type ExistingRoomUsage,
+  type RoomAssignmentCandidate,
+  type RoomInventory,
+  type RoomOverflow,
+  DEFAULT_ROOM_GROUP_CAPACITY,
+} from "@/lib/room-assignment";
+import {
   buildCompatibilityWarnings,
   type AssignStudentInput,
   type CompatibilityWarning,
@@ -57,6 +65,7 @@ type GroupRow = {
   day_of_week: number | null;
   meet_start_time: string | null;
   meet_end_time: string | null;
+  room_id?: number | null;
 };
 
 type ManualStudentContext = {
@@ -76,6 +85,54 @@ type ManualActionResult =
       assignedCount?: number;
       groupId?: string;
     };
+
+type MatchingActionResult =
+  | { error: string }
+  | {
+      requiresRoomConfirmation: true;
+      groupsPreviewCount: number;
+      flaggedCount: number;
+      flagged: {
+        user_id: string;
+        full_name: string;
+      }[];
+      roomOverflow: RoomOverflow[];
+    }
+  | {
+      groupsCreated: number;
+      flaggedCount: number;
+      flagged: {
+        user_id: string;
+        full_name: string;
+      }[];
+      roomOverflowCount: number;
+      roomOverflow: RoomOverflow[];
+      roomlessCount: number;
+      overbookedCount: number;
+    };
+
+type RoomDayRow =
+  | {
+      day: number;
+    }
+  | {
+      day: number;
+    }[]
+  | null;
+
+type RoomRow = {
+  id: number;
+  building: string;
+  room_number: string;
+  group_capacity: number | null;
+  room_day: RoomDayRow;
+};
+
+type ExistingScheduledGroupRow = {
+  room_id: number | null;
+  day_of_week: number | null;
+  meet_start_time: string | null;
+};
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -284,9 +341,101 @@ function slotIndexToTime(slotIndex: number, day: number) {
   return `${String(hourOfDay).padStart(2, "0")}:00:00`;
 }
 
+function getRoomDays(roomDay: RoomDayRow) {
+  if (!roomDay) {
+    return [];
+  }
+
+  const entries = Array.isArray(roomDay) ? roomDay : [roomDay];
+  return entries
+    .map((entry) => entry.day)
+    .filter((day) => Number.isInteger(day) && day >= 0 && day <= 4)
+    .sort((left, right) => left - right);
+}
+
+async function loadRoomInventory(
+  supabase: SupabaseClient,
+): Promise<{ rooms: RoomInventory[] } | { error: string }> {
+  const { data: rooms, error } = await supabase
+    .from("room")
+    .select("id, building, room_number, group_capacity, room_day(day)");
+
+  if (error) {
+    console.error("Error fetching rooms:", error);
+    return { error: "Failed to load room inventory" };
+  }
+
+  return {
+    rooms: ((rooms ?? []) as RoomRow[]).map((room) => ({
+      id: room.id,
+      building: room.building,
+      roomNumber: room.room_number,
+      groupCapacity: room.group_capacity ?? DEFAULT_ROOM_GROUP_CAPACITY,
+      availableDays: getRoomDays(room.room_day),
+    })),
+  };
+}
+
+async function loadExistingRoomUsage(
+  supabase: SupabaseClient,
+): Promise<{ usage: ExistingRoomUsage[] } | { error: string }> {
+  const { data, error } = await supabase
+    .from("group")
+    .select("room_id, day_of_week, meet_start_time")
+    .eq("preference", "in_person");
+
+  if (error) {
+    console.error("Error fetching existing room usage:", error);
+    return { error: "Failed to load current room assignments" };
+  }
+
+  return {
+    usage: ((data ?? []) as ExistingScheduledGroupRow[])
+      .filter(
+        (group) =>
+          group.day_of_week !== null &&
+          group.meet_start_time !== null &&
+          group.day_of_week >= 0 &&
+          group.day_of_week <= 4,
+      )
+      .map((group) => ({
+        roomId: group.room_id,
+        dayOfWeek: group.day_of_week ?? 0,
+        meetStartTime: group.meet_start_time ?? "",
+        groupCount: 1,
+      })),
+  };
+}
+
+function formatFlaggedStudents(students: MatchingStudent[]) {
+  return students.map((student) => ({
+    user_id: student.user_id,
+    full_name: student.full_name,
+  }));
+}
+
+function buildRoomCandidates(
+  groups: {
+    preference: "in_person" | "online";
+    window: {
+      day: number;
+      startIndex: number;
+    };
+  }[],
+): RoomAssignmentCandidate[] {
+  return groups.map((group) => ({
+    preference: group.preference,
+    dayOfWeek: group.window.day,
+    meetStartTime: slotIndexToTime(group.window.startIndex, group.window.day),
+  }));
+}
+
 export async function runMatchingAction(
   mode: MatchingMode = "group_ungrouped",
-) {
+  options?: {
+    overrideRoomCapacity?: boolean;
+  },
+): Promise<MatchingActionResult> {
   const supabase = await createClient();
 
   const adminCheck = await requireAdmin(supabase);
@@ -355,6 +504,40 @@ export async function runMatchingAction(
     }));
 
   const { groups, flagged } = runMatchingAlgorithm(students);
+  const flaggedStudents = formatFlaggedStudents(flagged);
+
+  const roomInventoryResult = await loadRoomInventory(supabase);
+  if ("error" in roomInventoryResult) {
+    return roomInventoryResult;
+  }
+
+  const existingUsageResult =
+    mode === "group_ungrouped"
+      ? await loadExistingRoomUsage(supabase)
+      : { usage: [] };
+  if ("error" in existingUsageResult) {
+    return existingUsageResult;
+  }
+
+  const roomAssignmentPlan = assignRoomsToGroups(
+    buildRoomCandidates(groups),
+    roomInventoryResult.rooms,
+    existingUsageResult.usage,
+    options?.overrideRoomCapacity ?? false,
+  );
+
+  if (
+    roomAssignmentPlan.overflow.length > 0 &&
+    !(options?.overrideRoomCapacity ?? false)
+  ) {
+    return {
+      requiresRoomConfirmation: true,
+      groupsPreviewCount: groups.length,
+      flaggedCount: flaggedStudents.length,
+      flagged: flaggedStudents,
+      roomOverflow: roomAssignmentPlan.overflow,
+    };
+  }
 
   if (mode === "regroup_all") {
     const { error: memberDeleteError } = await supabase
@@ -379,8 +562,10 @@ export async function runMatchingAction(
   }
 
   let groupsCreated = 0;
+  let roomlessCount = 0;
+  let overbookedCount = 0;
 
-  for (const group of groups) {
+  for (const [index, group] of groups.entries()) {
     const startTime = slotIndexToTime(
       group.window.startIndex,
       group.window.day,
@@ -390,6 +575,11 @@ export async function runMatchingAction(
       group.window.day,
     );
 
+    const roomAssignment = roomAssignmentPlan.assignments[index] ?? {
+      roomId: null,
+      overbooked: false,
+    };
+
     const { data: newGroup, error: groupError } = await supabase
       .from("group")
       .insert({
@@ -397,6 +587,8 @@ export async function runMatchingAction(
         day_of_week: group.window.day,
         meet_start_time: startTime,
         meet_end_time: endTime,
+        room_id: roomAssignment.roomId,
+        room_overbooked: roomAssignment.overbooked,
       })
       .select("id")
       .single();
@@ -423,18 +615,28 @@ export async function runMatchingAction(
       );
     }
 
+    if (group.preference === "in_person" && roomAssignment.roomId === null) {
+      roomlessCount++;
+    }
+
+    if (roomAssignment.overbooked) {
+      overbookedCount++;
+    }
+
     groupsCreated++;
   }
 
   revalidatePath("/admin/groups");
+  revalidatePath("/student/group");
 
   return {
     groupsCreated,
-    flaggedCount: flagged.length,
-    flagged: flagged.map((s) => ({
-      user_id: s.user_id,
-      full_name: s.full_name,
-    })),
+    flaggedCount: flaggedStudents.length,
+    flagged: flaggedStudents,
+    roomOverflowCount: roomAssignmentPlan.overflow.length,
+    roomOverflow: roomAssignmentPlan.overflow,
+    roomlessCount,
+    overbookedCount,
   };
 }
 
@@ -496,6 +698,37 @@ export async function createManualGroup(
     };
   }
 
+  let manualRoomId: number | null = null;
+  let manualRoomOverbooked = false;
+
+  if (validation.value.preference === "in_person") {
+    const roomInventoryResult = await loadRoomInventory(supabase);
+    if ("error" in roomInventoryResult) {
+      return roomInventoryResult;
+    }
+
+    const existingUsageResult = await loadExistingRoomUsage(supabase);
+    if ("error" in existingUsageResult) {
+      return existingUsageResult;
+    }
+
+    const assignmentPlan = assignRoomsToGroups(
+      [
+        {
+          preference: "in_person",
+          dayOfWeek: validation.value.dayOfWeek,
+          meetStartTime: validation.value.meetStartTime,
+        },
+      ],
+      roomInventoryResult.rooms,
+      existingUsageResult.usage,
+      false,
+    );
+
+    manualRoomId = assignmentPlan.assignments[0]?.roomId ?? null;
+    manualRoomOverbooked = assignmentPlan.assignments[0]?.overbooked ?? false;
+  }
+
   const { data: newGroup, error: groupError } = await supabase
     .from("group")
     .insert({
@@ -503,6 +736,8 @@ export async function createManualGroup(
       day_of_week: validation.value.dayOfWeek,
       meet_start_time: validation.value.meetStartTime,
       meet_end_time: validation.value.meetEndTime,
+      room_id: manualRoomId,
+      room_overbooked: manualRoomOverbooked,
     })
     .select("id")
     .single();
@@ -531,6 +766,7 @@ export async function createManualGroup(
   }
 
   revalidatePath("/admin/groups");
+  revalidatePath("/student/group");
 
   return {
     success: true,

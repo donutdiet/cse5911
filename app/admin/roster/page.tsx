@@ -7,7 +7,24 @@ export default async function RosterPage() {
   const { data: profiles, error: profilesError } = await supabase
     .from("profile")
     .select(
-      "user_id, full_name, role, email, phone, preference, profile_picture_url",
+      `
+      user_id,
+      full_name,
+      role,
+      email,
+      phone,
+      preference,
+      profile_picture_url,
+      member_of (
+        group (
+          id,
+          preference,
+          day_of_week,
+          meet_start_time,
+          meet_end_time
+        )
+      )
+    `,
     )
     .eq("role", "student");
 

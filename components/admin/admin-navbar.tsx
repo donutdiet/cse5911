@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Users, LayoutGrid, Calendar, Menu } from "lucide-react";
+import { Users, LayoutGrid, Calendar, DoorOpen, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const tabs = [
   { label: "Roster", href: "/admin/roster", icon: Users },
   { label: "Groups", href: "/admin/groups", icon: LayoutGrid },
+  { label: "Rooms", href: "/admin/rooms", icon: DoorOpen },
   { label: "Agendas", href: "/admin/agendas", icon: Calendar },
 ];
 

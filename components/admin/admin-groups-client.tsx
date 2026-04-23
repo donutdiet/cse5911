@@ -84,6 +84,20 @@ type Group = {
   day_of_week: number | null;
   meet_start_time: string;
   meet_end_time: string;
+  room_id?: number | null;
+  room_overbooked?: boolean;
+  room?:
+    | {
+        id?: number;
+        building?: string | null;
+        room_number?: string | null;
+      }
+    | {
+        id?: number;
+        building?: string | null;
+        room_number?: string | null;
+      }[]
+    | null;
   created_at: string;
   member_of: GroupMember[];
 };
@@ -97,6 +111,27 @@ type MatchingResult = {
   groupsCreated: number;
   flaggedCount: number;
   flagged: FlaggedStudent[];
+  roomOverflowCount: number;
+  roomOverflow: RoomOverflow[];
+  roomlessCount: number;
+  overbookedCount: number;
+};
+
+type RoomOverflow = {
+  dayOfWeek: number;
+  meetStartTime: string;
+  requestedGroups: number;
+  totalCapacity: number;
+  availableRooms: number;
+  overflowGroups: number;
+};
+
+type RoomConfirmationResult = {
+  requiresRoomConfirmation: true;
+  groupsPreviewCount: number;
+  flaggedCount: number;
+  flagged: FlaggedStudent[];
+  roomOverflow: RoomOverflow[];
 };
 
 type MatchingMode = "regroup_all" | "group_ungrouped";
@@ -131,6 +166,27 @@ function formatTime(timeString: string) {
 function formatMeeting(group: Group) {
   const dayName = DAY_NAMES[group.day_of_week ?? 0] ?? "Unknown day";
   return `${dayName} ${formatTime(group.meet_start_time)} to ${formatTime(group.meet_end_time)}`;
+}
+
+function getRoom(group: Group) {
+  if (Array.isArray(group.room)) {
+    return group.room[0] ?? null;
+  }
+
+  return group.room ?? null;
+}
+
+function formatRoomLabel(group: Group) {
+  if (group.preference === "online") {
+    return "Online group";
+  }
+
+  const room = getRoom(group);
+  if (!room?.building || !room.room_number) {
+    return "No room assigned";
+  }
+
+  return `${room.building} ${room.room_number}`;
 }
 
 function formatPreference(preference: string | null) {
@@ -223,6 +279,11 @@ export default function AdminGroupsClient({
   const [showResult, setShowResult] = useState(false);
   const [showFlagged, setShowFlagged] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
+  const [roomConfirmation, setRoomConfirmation] =
+    useState<RoomConfirmationResult | null>(null);
+  const [roomConfirmationMode, setRoomConfirmationMode] =
+    useState<MatchingMode | null>(null);
+  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<Group | null>(null);
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -341,18 +402,34 @@ export default function AdminGroupsClient({
     setAssignGroupId(groups[0]?.id ?? "");
   }
 
-  async function runMatching(mode: MatchingMode) {
+  function closeDeleteDialog() {
+    setPendingDeleteGroup(null);
+  }
+
+  function openDeleteDialog(group: Group) {
+    setError(null);
+    setPendingDeleteGroup(group);
+  }
+
+  async function runMatching(
+    mode: MatchingMode,
+    overrideRoomCapacity = false,
+  ) {
     setError(null);
     setLastResult(null);
     setShowResult(false);
     setShowFlagged(false);
     setConfirmRegen(false);
+    if (!overrideRoomCapacity) {
+      setRoomConfirmation(null);
+      setRoomConfirmationMode(null);
+    }
     setLoadingMode(mode);
     clearResultTimer();
     clearErrorTimer();
 
     try {
-      const result = await runMatchingAction(mode);
+      const result = await runMatchingAction(mode, { overrideRoomCapacity });
 
       if ("error" in result) {
         setError(result.error ?? "Something went wrong");
@@ -360,12 +437,20 @@ export default function AdminGroupsClient({
         return;
       }
 
+      if ("requiresRoomConfirmation" in result) {
+        setRoomConfirmation(result);
+        setRoomConfirmationMode(mode);
+        return;
+      }
+
       const matchResult = result as MatchingResult;
       setLastResult(matchResult);
       setShowResult(true);
       setShowFlagged(matchResult.flaggedCount > 0);
+      setRoomConfirmation(null);
+      setRoomConfirmationMode(null);
 
-      if (matchResult.flaggedCount === 0) {
+      if (matchResult.flaggedCount === 0 && matchResult.roomOverflowCount === 0) {
         resultTimerRef.current = setTimeout(() => setShowResult(false), 6000);
       }
 
@@ -782,6 +867,128 @@ export default function AdminGroupsClient({
         </div>
       </ManagementDialog>
 
+      <ManagementDialog
+        open={roomConfirmation !== null}
+        title="Room capacity exceeded"
+        description="The matching algorithm found valid groups, but some in-person meeting slots do not have enough room capacity. Override to create the groups anyway, or cancel and adjust room inventory first."
+        onClose={() => {
+          setRoomConfirmation(null);
+          setRoomConfirmationMode(null);
+        }}
+      >
+        {roomConfirmation && (
+          <>
+            <div className="rounded-md border border-amber-300 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+              <p className="font-medium">
+                {roomConfirmation.groupsPreviewCount}{" "}
+                {roomConfirmation.groupsPreviewCount === 1 ? "group" : "groups"}{" "}
+                would be created.
+              </p>
+              <p className="mt-1">
+                {roomConfirmation.roomOverflow.length}{" "}
+                {roomConfirmation.roomOverflow.length === 1
+                  ? "time slot has"
+                  : "time slots have"}{" "}
+                room shortages.
+              </p>
+            </div>
+
+            <ul className="space-y-2 text-sm">
+              {roomConfirmation.roomOverflow.map((overflow) => (
+                <li
+                  key={`${overflow.dayOfWeek}:${overflow.meetStartTime}`}
+                  className="rounded-md border px-3 py-2"
+                >
+                  <p className="font-medium">
+                    {DAY_NAMES[overflow.dayOfWeek]} {formatTime(overflow.meetStartTime)}
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    {overflow.requestedGroups} in-person{" "}
+                    {overflow.requestedGroups === 1 ? "group" : "groups"} need
+                    rooms, but only {overflow.totalCapacity}{" "}
+                    {overflow.totalCapacity === 1 ? "slot is" : "slots are"}{" "}
+                    available across {overflow.availableRooms}{" "}
+                    {overflow.availableRooms === 1 ? "room" : "rooms"}.
+                  </p>
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={loading}
+                onClick={() => {
+                  setRoomConfirmation(null);
+                  setRoomConfirmationMode(null);
+                }}
+              >
+                Don&apos;t group
+              </Button>
+              <Button
+                type="button"
+                disabled={loading}
+                onClick={() =>
+                  runMatching(roomConfirmationMode ?? "regroup_all", true)
+                }
+              >
+                Override room capacity
+              </Button>
+            </div>
+          </>
+        )}
+      </ManagementDialog>
+
+      <ManagementDialog
+        open={pendingDeleteGroup !== null}
+        title="Delete group?"
+        description="This will permanently delete the group and remove all of its member assignments."
+        onClose={closeDeleteDialog}
+      >
+        {pendingDeleteGroup && (
+          <>
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+              <p className="font-medium">Meeting</p>
+              <p className="text-muted-foreground mt-1">
+                {formatMeeting(pendingDeleteGroup)} •{" "}
+                {formatPreference(pendingDeleteGroup.preference)}
+              </p>
+              <p className="text-muted-foreground mt-1">
+                {pendingDeleteGroup.member_of.length}{" "}
+                {pendingDeleteGroup.member_of.length === 1 ? "member" : "members"}
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={deletingGroupId === pendingDeleteGroup.id}
+                onClick={closeDeleteDialog}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deletingGroupId === pendingDeleteGroup.id}
+                onClick={async () => {
+                  await handleDeleteGroup(pendingDeleteGroup.id);
+                  setPendingDeleteGroup((current) =>
+                    current?.id === pendingDeleteGroup.id ? null : current,
+                  );
+                }}
+              >
+                {deletingGroupId === pendingDeleteGroup.id
+                  ? "Deleting..."
+                  : "Delete group"}
+              </Button>
+            </div>
+          </>
+        )}
+      </ManagementDialog>
+
       <div className="flex items-end justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-baseline gap-3">
@@ -915,7 +1122,12 @@ export default function AdminGroupsClient({
             {lastResult.groupsCreated === 1 ? "group" : "groups"}.{" "}
             {lastResult.flaggedCount === 0
               ? "All students were placed."
-              : `${lastResult.flaggedCount} student${lastResult.flaggedCount === 1 ? "" : "s"} could not be placed.`}
+              : `${lastResult.flaggedCount} student${lastResult.flaggedCount === 1 ? "" : "s"} could not be placed.`}{" "}
+            {lastResult.roomlessCount > 0
+              ? `${lastResult.roomlessCount} in-person group${lastResult.roomlessCount === 1 ? "" : "s"} still need a room.`
+              : lastResult.overbookedCount > 0
+                ? `${lastResult.overbookedCount} group${lastResult.overbookedCount === 1 ? "" : "s"} were created with room-capacity overrides.`
+                : ""}
           </p>
           <button
             type="button"
@@ -928,6 +1140,40 @@ export default function AdminGroupsClient({
             <X className="h-4 w-4" />
             <span className="sr-only">Dismiss</span>
           </button>
+        </div>
+      )}
+
+      {lastResult && lastResult.roomOverflowCount > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-4 dark:border-amber-800 dark:bg-amber-950/30 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-start gap-3">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1 space-y-1">
+              <h2 className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                Room capacity was exceeded for {lastResult.roomOverflowCount}{" "}
+                {lastResult.roomOverflowCount === 1 ? "time slot" : "time slots"}
+              </h2>
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                Review the affected meeting times below and update rooms if you
+                want to remove overrides or unassigned groups.
+              </p>
+            </div>
+          </div>
+          <ul className="mt-3 ml-7 space-y-1.5 text-sm">
+            {lastResult.roomOverflow.map((overflow) => (
+              <li
+                key={`${overflow.dayOfWeek}:${overflow.meetStartTime}`}
+                className="text-amber-950 dark:text-amber-100"
+              >
+                <span className="font-medium">
+                  {DAY_NAMES[overflow.dayOfWeek]} {formatTime(overflow.meetStartTime)}
+                </span>{" "}
+                had {overflow.requestedGroups} in-person{" "}
+                {overflow.requestedGroups === 1 ? "group" : "groups"} with only{" "}
+                {overflow.totalCapacity} available room{" "}
+                {overflow.totalCapacity === 1 ? "slot" : "slots"}.
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -1001,6 +1247,7 @@ export default function AdminGroupsClient({
             <colgroup>
               <col className="w-10" />
               <col className="w-[22rem]" />
+              <col className="w-[14rem]" />
               <col className="w-[10rem]" />
               <col className="w-[8rem]" />
               <col className="w-[10rem]" />
@@ -1010,6 +1257,7 @@ export default function AdminGroupsClient({
               <TableRow className="bg-muted/100">
                 <TableHead className="w-10 px-4" aria-label="Expand" />
                 <TableHead className="px-4">Meeting</TableHead>
+                <TableHead className="px-4">Room</TableHead>
                 <TableHead className="px-4">Preference</TableHead>
                 <TableHead className="px-4">Members</TableHead>
                 <TableHead className="px-4">Created</TableHead>
@@ -1089,9 +1337,33 @@ export default function AdminGroupsClient({
                           <div className="font-medium">
                             {formatMeeting(group)}
                           </div>
-                          <div className="text-muted-foreground text-xs italic">
-                            Building TBD
+                          {group.room_overbooked && (
+                            <div className="text-amber-700 text-xs font-medium">
+                              Capacity override used
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <div className="space-y-0.5 whitespace-normal">
+                          <div
+                            className={cn(
+                              "text-sm",
+                              group.preference === "in_person" &&
+                                !getRoom(group)?.building &&
+                                "text-amber-700",
+                              group.preference !== "in_person" &&
+                                "text-muted-foreground",
+                            )}
+                          >
+                            {formatRoomLabel(group)}
                           </div>
+                          {group.preference === "in_person" &&
+                            !getRoom(group)?.building && (
+                              <div className="text-muted-foreground text-xs">
+                                Assign or configure more room capacity.
+                              </div>
+                            )}
                         </div>
                       </TableCell>
                       <TableCell className="px-4 text-muted-foreground capitalize">
@@ -1129,7 +1401,7 @@ export default function AdminGroupsClient({
                               <DropdownMenuItem
                                 variant="destructive"
                                 disabled={deletingGroupId === group.id}
-                                onClick={() => handleDeleteGroup(group.id)}
+                                onClick={() => openDeleteDialog(group)}
                               >
                                 <Trash2 className="size-4" />
                                 {deletingGroupId === group.id
@@ -1147,7 +1419,7 @@ export default function AdminGroupsClient({
                         className="bg-muted/5 hover:bg-muted/5"
                       >
                         <TableCell
-                          colSpan={6}
+                          colSpan={7}
                           className="bg-muted/100 px-4 py-0"
                         >
                           <div className="ml-10 px-4 py-3">

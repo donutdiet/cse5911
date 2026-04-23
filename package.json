@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:matching": "node --experimental-strip-types test-matching.ts",
-    "test:group-management": "node --experimental-strip-types test-group-management.ts"
+    "test:group-management": "node --experimental-strip-types test-group-management.ts",
+    "test:rooms": "node --experimental-strip-types test-room-assignment.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

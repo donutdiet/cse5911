@@ -61,7 +61,19 @@ export default async function GroupPage() {
   // fetch the group details
   const { data: group, error: groupError } = await supabase
     .from('group')
-    .select('id, preference, day_of_week, meet_start_time, meet_end_time')
+    .select(`
+      id,
+      preference,
+      day_of_week,
+      meet_start_time,
+      meet_end_time,
+      room_id,
+      room_overbooked,
+      room (
+        building,
+        room_number
+      )
+    `)
     .eq('id', membership.group_id)
     .single()
 
@@ -100,6 +112,8 @@ export default async function GroupPage() {
   const startTime   = formatTime(group.meet_start_time)
   const endTime     = formatTime(group.meet_end_time)
   const isOnline    = group.preference === 'online'
+  const room = Array.isArray(group.room) ? group.room[0] : group.room
+  const roomLabel = room ? `${room.building} ${room.room_number}` : 'To be announced'
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -128,11 +142,23 @@ export default async function GroupPage() {
             <p className="text-xs text-gray-400 uppercase tracking-wide">Format</p>
             <p className="text-sm text-gray-800 mt-0.5">{isOnline ? 'Online' : 'In Person'}</p>
           </div>
+          {!isOnline && (
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide">Location</p>
+              <p className="text-sm text-gray-800 mt-0.5">{roomLabel}</p>
+            </div>
+          )}
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide">Members</p>
             <p className="text-sm text-gray-800 mt-0.5">{members.length} students</p>
           </div>
         </div>
+
+        {!isOnline && group.room_overbooked && (
+          <p className="text-xs text-amber-700">
+            This meeting was created after room capacity was manually overridden.
+          </p>
+        )}
       </div>
 
       {/* members card */}

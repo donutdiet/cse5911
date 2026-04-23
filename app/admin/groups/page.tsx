@@ -7,9 +7,6 @@
   after generating groups and this page will re-run and pass fresh data.
 */
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import AdminGroupsClient from "@/components/admin/admin-groups-client";
 import { createClient } from "@/lib/supabase/server";
 
@@ -35,7 +32,14 @@ export default async function AdminGroupsPage() {
       day_of_week,
       meet_start_time,
       meet_end_time,
+      room_id,
+      room_overbooked,
       created_at,
+      room (
+        id,
+        building,
+        room_number
+      ),
       member_of (
         user_id,
         profile (
