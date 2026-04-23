@@ -25,13 +25,13 @@ export default function AvatarLightbox({ src, alt }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`View ${alt}'s profile picture`}
-        className="block rounded-full transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-[#BB0000] focus:ring-offset-2"
+        className="block rounded-full transition hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}
-          className="h-9 w-9 rounded-full object-cover border border-gray-200"
+          className="h-10 w-10 rounded-full border object-cover"
         />
       </button>
 
@@ -55,7 +55,7 @@ export default function AvatarLightbox({ src, alt }: Props) {
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close"
-            className="absolute top-4 right-4 h-9 w-9 rounded-full bg-white/90 hover:bg-white text-gray-700 flex items-center justify-center shadow"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-foreground shadow hover:bg-white"
           >
             <span className="text-xl leading-none">&times;</span>
           </button>

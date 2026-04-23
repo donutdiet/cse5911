@@ -7,9 +7,6 @@
   after generating groups and this page will re-run and pass fresh data.
 */
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import AdminGroupsClient from "@/components/admin/admin-groups-client";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,7 +16,11 @@ type UngroupedStudent = {
   email: string | null;
   phone: string | null;
   preference: "in_person" | "online" | "no_preference" | null;
+  study_mode: "group" | "independent";
   profile_picture_url: string | null;
+  member_of?: {
+    group_id: string;
+  }[] | null;
 };
 
 export default async function AdminGroupsPage() {
@@ -35,7 +36,14 @@ export default async function AdminGroupsPage() {
       day_of_week,
       meet_start_time,
       meet_end_time,
+      room_id,
+      room_overbooked,
       created_at,
+      room (
+        id,
+        building,
+        room_number
+      ),
       member_of (
         user_id,
         profile (
@@ -56,6 +64,7 @@ export default async function AdminGroupsPage() {
       email,
       phone,
       preference,
+      study_mode,
       profile_picture_url,
       member_of (
         group_id
@@ -71,22 +80,35 @@ export default async function AdminGroupsPage() {
     );
   }
 
-  const ungroupedStudents: UngroupedStudent[] = (studentProfiles ?? [])
-    .filter((student) => !student.member_of || student.member_of.length === 0)
-    .map((student) => ({
-      user_id: student.user_id,
-      full_name: student.full_name,
-      email: student.email,
-      phone: student.phone,
-      preference: student.preference,
-      profile_picture_url: student.profile_picture_url,
-    }));
+  const allStudents: UngroupedStudent[] = (studentProfiles ?? []).map((student) => ({
+    user_id: student.user_id,
+    full_name: student.full_name,
+    email: student.email,
+    phone: student.phone,
+    preference: student.preference,
+    study_mode: student.study_mode,
+    profile_picture_url: student.profile_picture_url,
+    member_of: student.member_of,
+  }));
+
+  const ungroupedStudents = allStudents
+    .filter(
+      (student) =>
+        student.study_mode !== "independent" &&
+        (!student.member_of || student.member_of.length === 0),
+    )
+    .map(({ member_of: _memberOf, ...student }) => student);
+
+  const independentStudents = allStudents
+    .filter((student) => student.study_mode === "independent")
+    .map(({ member_of: _memberOf, ...student }) => student);
 
   return (
     <div className="w-full max-w-7xl space-y-2">
       <AdminGroupsClient
         groups={groups ?? []}
         ungroupedStudents={ungroupedStudents}
+        independentStudents={independentStudents}
       />
     </div>
   );

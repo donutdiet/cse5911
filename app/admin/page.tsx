@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { Calendar, LayoutGrid, Users, ArrowRight } from "lucide-react";
+import {
+  Calendar,
+  LayoutGrid,
+  Users,
+  BarChart3,
+  ArrowRight,
+} from "lucide-react";
 import { WelcomeSkeletons } from "@/components/layout/welcome-skeletons";
 import {
   Card,
@@ -26,6 +32,12 @@ const quickLinks = [
     icon: Calendar,
     accent: "from-primary/10 to-primary/5",
   },
+  {
+    href: "/admin/progress",
+    label: "Progress",
+    icon: BarChart3,
+    accent: "from-primary/15 to-primary/5",
+  },
 ];
 
 export default function AdminPage() {
@@ -48,7 +60,7 @@ export default function AdminPage() {
       </div>
 
       <div
-        className="mt-12 grid gap-4 md:grid-cols-3"
+        className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4"
         style={{ animation: "fade-in-up 0.6s ease-out 0.1s both" }}
       >
         {quickLinks.map(({ href, label, icon: Icon, accent }, i) => (

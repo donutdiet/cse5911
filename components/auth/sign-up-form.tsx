@@ -20,6 +20,10 @@ function isValidOsuStudentEmail(email: string) {
   return email.trim().toLowerCase().endsWith("@osu.edu");
 }
 
+function getConfirmRedirectUrl() {
+  return `${window.location.origin}/confirm?next=${encodeURIComponent("/student")}`;
+}
+
 export function SignUpForm({
   className,
   ...props
@@ -56,11 +60,13 @@ export function SignUpForm({
         email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/student`,
+          emailRedirectTo: getConfirmRedirectUrl(),
         },
       });
       if (error) throw error;
-      router.push("/sign-up-success");
+      router.push(
+        `/sign-up-success?email=${encodeURIComponent(normalizedEmail)}`,
+      );
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {

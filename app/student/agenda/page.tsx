@@ -1,6 +1,14 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { ClipboardList } from "lucide-react";
+
 import StudentAgendaBoard from "@/components/student/student-agenda-board";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  buildAgendaSummaries,
+  buildCompletedTaskSet,
+  getCompletedTaskIdsForAgenda,
+} from "@/lib/progress";
+import { createClient } from "@/lib/supabase/server";
 
 type Task = {
   id: number;
@@ -31,18 +39,6 @@ type Agenda = {
   start_date: string;
   end_date: string;
   sections: Section[];
-};
-
-type AgendaSummary = {
-  id: number;
-  title: string;
-  description: string | null;
-  start_date: string;
-  end_date: string;
-  totalSections: number;
-  totalTasks: number;
-  studentProgressPercent: number;
-  groupProgressPercent: number;
 };
 
 type GroupMember = {
@@ -78,15 +74,12 @@ export default async function StudentAgendaPage({
 
   if (!membership) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            You have not been assigned to a group yet, so there is no agenda to
-            show. Check back after groups are created.
-          </p>
-        </div>
-      </div>
+      <AgendaEmptyShell>
+        <EmptyState
+          title="No agenda yet"
+          description="You haven't been assigned to a group, so there's no agenda to show. Check back after groups are created."
+        />
+      </AgendaEmptyShell>
     );
   }
 
@@ -96,14 +89,9 @@ export default async function StudentAgendaPage({
 
   if (membersError) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
-          <p className="mt-2 text-sm text-red-700">
-            There was a problem loading your group members. Please try again.
-          </p>
-        </div>
-      </div>
+      <AgendaEmptyShell>
+        <ErrorState message="There was a problem loading your group members. Please try again." />
+      </AgendaEmptyShell>
     );
   }
 
@@ -113,26 +101,23 @@ export default async function StudentAgendaPage({
 
   const { data: agendasData, error: agendasError } = await supabase
     .from("agenda")
-    .select(`
+    .select(
+      `
       *,
       sections:section(
         *,
         tasks:task(*)
       )
-    `)
+    `,
+    )
     .order("start_date", { ascending: true })
     .order("week", { ascending: true });
 
   if (agendasError) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
-          <p className="mt-2 text-sm text-red-700">
-            There was a problem loading agendas. Please try again.
-          </p>
-        </div>
-      </div>
+      <AgendaEmptyShell>
+        <ErrorState message="There was a problem loading agendas. Please try again." />
+      </AgendaEmptyShell>
     );
   }
 
@@ -140,14 +125,12 @@ export default async function StudentAgendaPage({
 
   if (agendas.length === 0) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            No agendas have been published yet.
-          </p>
-        </div>
-      </div>
+      <AgendaEmptyShell>
+        <EmptyState
+          title="No agendas published yet"
+          description="Your instructor hasn't published any agendas. Check back soon."
+        />
+      </AgendaEmptyShell>
     );
   }
 
@@ -157,121 +140,49 @@ export default async function StudentAgendaPage({
     ),
   );
 
-  const {
-    data: myCompletions,
-    error: myCompletionsError,
-  } = allTaskIds.length > 0
-    ? await supabase
-        .from("task_completion")
-        .select("task_id, completed")
-        .eq("user_id", user.id)
-        .in("task_id", allTaskIds)
-    : {
-        data: [] as { task_id: number; completed: boolean }[],
-        error: null,
-      };
+  const { data: myCompletions, error: myCompletionsError } =
+    allTaskIds.length > 0
+      ? await supabase
+          .from("task_completion")
+          .select("task_id, completed")
+          .eq("user_id", user.id)
+          .in("task_id", allTaskIds)
+      : {
+          data: [] as { task_id: number; completed: boolean }[],
+          error: null,
+        };
 
-  const {
-    data: groupCompletions,
-    error: groupCompletionsError,
-  } = allTaskIds.length > 0 && memberIds.length > 0
-    ? await supabase
-        .from("task_completion")
-        .select("user_id, task_id, completed")
-        .in("user_id", memberIds)
-        .in("task_id", allTaskIds)
-    : {
-        data: [] as { user_id: string; task_id: number; completed: boolean }[],
-        error: null,
-      };
+  const { data: groupCompletions, error: groupCompletionsError } =
+    allTaskIds.length > 0 && memberIds.length > 0
+      ? await supabase
+          .from("task_completion")
+          .select("user_id, task_id, completed")
+          .in("user_id", memberIds)
+          .in("task_id", allTaskIds)
+      : {
+          data: [] as {
+            user_id: string;
+            task_id: number;
+            completed: boolean;
+          }[],
+          error: null,
+        };
 
   if (myCompletionsError || groupCompletionsError) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
-          <p className="mt-2 text-sm text-red-700">
-            There was a problem loading task progress. Please try again.
-          </p>
-        </div>
-      </div>
+      <AgendaEmptyShell>
+        <ErrorState message="There was a problem loading task progress. Please try again." />
+      </AgendaEmptyShell>
     );
   }
 
-  const myCompletedTaskSet = new Set(
-    (myCompletions ?? [])
-      .filter((row) => row.completed)
-      .map((row) => row.task_id),
-  );
+  const myCompletedTaskSet = buildCompletedTaskSet(myCompletions ?? []);
 
-  const agendaTaskIdsByAgenda = new Map<number, number[]>();
-  const taskIdToAgendaId = new Map<number, number>();
-
-  for (const agenda of agendas) {
-    const agendaTaskIds = (agenda.sections ?? []).flatMap((section) =>
-      (section.tasks ?? []).map((task) => task.id),
-    );
-
-    agendaTaskIdsByAgenda.set(agenda.id, agendaTaskIds);
-
-    for (const taskId of agendaTaskIds) {
-      taskIdToAgendaId.set(taskId, agenda.id);
-    }
-  }
-
-  const groupCompletedTaskCountByAgenda = new Map<number, number>();
-
-  for (const agenda of agendas) {
-    groupCompletedTaskCountByAgenda.set(agenda.id, 0);
-  }
-
-  for (const row of groupCompletions ?? []) {
-    if (!row.completed) continue;
-
-    const agendaId = taskIdToAgendaId.get(row.task_id);
-    if (agendaId === undefined) continue;
-
-    groupCompletedTaskCountByAgenda.set(
-      agendaId,
-      (groupCompletedTaskCountByAgenda.get(agendaId) ?? 0) + 1,
-    );
-  }
-
-  const agendaSummaries: AgendaSummary[] = agendas.map((agenda) => {
-    const agendaTaskIds = agendaTaskIdsByAgenda.get(agenda.id) ?? [];
-
-    const completedTaskIds = agendaTaskIds.filter((taskId) =>
-      myCompletedTaskSet.has(taskId),
-    );
-
-    const totalTasks = agendaTaskIds.length;
-    const completedTasks = completedTaskIds.length;
-
-    const studentProgressPercent =
-      totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
-
-    const totalPossibleGroupCompletions = memberIds.length * totalTasks;
-    const actualCompletedGroupTasks =
-      groupCompletedTaskCountByAgenda.get(agenda.id) ?? 0;
-
-    const groupProgressPercent =
-      totalPossibleGroupCompletions === 0
-        ? 0
-        : Math.round(
-            (actualCompletedGroupTasks / totalPossibleGroupCompletions) * 100,
-          );
-
-    return {
-      id: agenda.id,
-      title: agenda.title,
-      description: agenda.description,
-      start_date: agenda.start_date,
-      end_date: agenda.end_date,
-      totalSections: agenda.sections?.length ?? 0,
-      totalTasks,
-      studentProgressPercent,
-      groupProgressPercent,
-    };
+  const agendaSummaries = buildAgendaSummaries({
+    agendas,
+    completedTaskIds: myCompletedTaskSet,
+    groupCompletions: groupCompletions ?? [],
+    memberCount: memberIds.length,
   });
 
   const requestedAgendaId = Number(resolvedSearchParams?.agenda);
@@ -299,24 +210,14 @@ export default async function StudentAgendaPage({
     agendaSummaries.find((agenda) => agenda.id === selectedAgenda.id) ??
     agendaSummaries[0];
 
-  const completedTaskIdsForSelectedAgenda = (
-    selectedAgenda.sections ?? []
-  ).flatMap((section) =>
-    (section.tasks ?? [])
-      .map((task) => task.id)
-      .filter((taskId) => myCompletedTaskSet.has(taskId)),
+  const completedTaskIdsForSelectedAgenda = getCompletedTaskIdsForAgenda(
+    selectedAgenda,
+    myCompletedTaskSet,
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Agenda</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Browse agendas, move between them, and track your progress alongside
-          your group.
-        </p>
-      </div>
-
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:py-10">
+      <AgendaHeader />
       <StudentAgendaBoard
         agenda={selectedAgenda}
         agendaSummaries={agendaSummaries}
@@ -327,5 +228,60 @@ export default async function StudentAgendaPage({
         groupProgressPercent={selectedSummary.groupProgressPercent}
       />
     </div>
+  );
+}
+
+function AgendaHeader() {
+  return (
+    <header className="mb-6 text-center">
+      <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Browse agendas, move between them, and track your progress alongside
+        your group.
+      </p>
+    </header>
+  );
+}
+
+function AgendaEmptyShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:py-10">
+      <AgendaHeader />
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+          <ClipboardList className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold">{title}</h2>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <Card className="border-destructive/50 bg-destructive/5">
+      <CardContent className="py-8 text-center">
+        <p className="text-sm text-destructive">{message}</p>
+      </CardContent>
+    </Card>
   );
 }
