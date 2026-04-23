@@ -25,6 +25,7 @@ type StudentProfileRow = {
   user_id: string;
   full_name: string | null;
   preference: "in_person" | "online" | "no_preference" | null;
+  study_mode: "group" | "independent";
   member_of?: {
     group_id: string;
   }[] | null;
@@ -72,6 +73,7 @@ type ManualStudentContext = {
   user_id: string;
   full_name: string | null;
   preference: "in_person" | "online" | "no_preference" | null;
+  study_mode: "group" | "independent";
   member_of?: GroupMembershipRow[] | null;
   availabilitySlotIndexes: number[];
 };
@@ -176,7 +178,7 @@ async function loadStudentContexts(
 
   const { data: studentProfiles, error: profileError } = await supabase
     .from("profile")
-    .select("user_id, full_name, preference, member_of(group_id)")
+    .select("user_id, full_name, preference, study_mode, member_of(group_id)")
     .in("user_id", uniqueIds)
     .eq("role", "student");
 
@@ -246,6 +248,10 @@ function buildWarningsForStudents(
 
 function getAlreadyGroupedStudents(students: ManualStudentContext[]) {
   return students.filter((student) => (student.member_of?.length ?? 0) > 0);
+}
+
+function getIndependentStudyStudents(students: ManualStudentContext[]) {
+  return students.filter((student) => student.study_mode === "independent");
 }
 
 export async function removeStudent(studentId: string) {
@@ -447,7 +453,7 @@ export async function runMatchingAction(
   // students who are not already in a group
   const { data: studentProfiles, error: profileError } = await supabase
     .from("profile")
-    .select("user_id, full_name, preference, member_of(group_id)")
+    .select("user_id, full_name, preference, study_mode, member_of(group_id)")
     .eq("role", "student");
 
   if (profileError) {
@@ -492,9 +498,10 @@ export async function runMatchingAction(
     (studentProfiles ?? []) as StudentProfileRow[]
   )
     .filter((profileRow) =>
-      mode === "regroup_all"
+      profileRow.study_mode !== "independent" &&
+      (mode === "regroup_all"
         ? true
-        : !profileRow.member_of || profileRow.member_of.length === 0,
+        : !profileRow.member_of || profileRow.member_of.length === 0),
     )
     .map((p) => ({
       user_id: p.user_id,
@@ -690,6 +697,16 @@ export async function createManualGroup(
     };
   }
 
+  const independentStudyStudents = getIndependentStudyStudents(students);
+  if (independentStudyStudents.length > 0) {
+    return {
+      error:
+        independentStudyStudents.length === 1
+          ? `${independentStudyStudents[0]?.full_name ?? "A selected student"} is in Independent Study and cannot be added to a group.`
+          : "One or more selected students are in Independent Study and cannot be added to a group.",
+    };
+  }
+
   const warnings = buildWarningsForStudents(students, validation.value);
   if (warnings.length > 0 && !input.overrideWarnings) {
     return {
@@ -821,6 +838,12 @@ export async function assignStudentToGroup(
   if ((student.member_of?.length ?? 0) > 0) {
     return {
       error: `${student.full_name ?? "This student"} is already assigned to a group. Refresh and try again.`,
+    };
+  }
+
+  if (student.study_mode === "independent") {
+    return {
+      error: `${student.full_name ?? "This student"} is in Independent Study and cannot be assigned to a group.`,
     };
   }
 

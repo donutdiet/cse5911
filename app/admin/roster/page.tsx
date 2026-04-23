@@ -14,6 +14,7 @@ export default async function RosterPage() {
       email,
       phone,
       preference,
+      study_mode,
       profile_picture_url,
       member_of (
         group (

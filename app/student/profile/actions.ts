@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 type StudentPreference = "in_person" | "online" | "no_preference";
+type StudyMode = "group" | "independent";
 
 type UpdatedProfile = {
   user_id: string;
@@ -11,12 +12,17 @@ type UpdatedProfile = {
   full_name: string | null;
   phone: string | null;
   preference: StudentPreference;
+  study_mode: StudyMode;
   profile_picture_url: string | null;
   bio: string | null;
 };
 
 function isStudentPreference(value: string): value is StudentPreference {
   return ["in_person", "online", "no_preference"].includes(value);
+}
+
+function isStudyMode(value: string): value is StudyMode {
+  return ["group", "independent"].includes(value);
 }
 
 type ActionResult =
@@ -39,9 +45,14 @@ export async function updateStudentProfile(
   const phoneRaw = String(formData.get("phone") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const preference = String(formData.get("preference") ?? "no_preference");
+  const studyMode = String(formData.get("study_mode") ?? "group");
 
   if (!isStudentPreference(preference)) {
     return { ok: false, error: "Invalid preference value." };
+  }
+
+  if (!isStudyMode(studyMode)) {
+    return { ok: false, error: "Invalid study mode value." };
   }
 
   const phone = phoneRaw.replace(/\D/g, "");
@@ -52,6 +63,27 @@ export async function updateStudentProfile(
 
   if (bio.length > 500) {
     return { ok: false, error: "Bio must be 500 characters or less." };
+  }
+
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from("profile")
+    .select("member_of(group_id)")
+    .eq("user_id", user.id)
+    .single();
+
+  if (existingProfileError) {
+    return { ok: false, error: "Failed to load your current profile state." };
+  }
+
+  if (
+    studyMode === "independent" &&
+    (existingProfile?.member_of?.length ?? 0) > 0
+  ) {
+    return {
+      ok: false,
+      error:
+        "You cannot switch to Independent Study while assigned to a group. Reach out to your instructor to be removed first.",
+    };
   }
 
   const avatar = formData.get("avatar");
@@ -92,12 +124,14 @@ export async function updateStudentProfile(
     full_name: string | null;
     phone: string | null;
     preference: StudentPreference;
+    study_mode: StudyMode;
     bio: string | null;
     profile_picture_url?: string | null;
   } = {
     full_name: full_name.length ? full_name : null,
     phone: phone.length ? phone : null,
     preference,
+    study_mode: studyMode,
     bio: bio.length ? bio : null,
   };
 
@@ -110,7 +144,7 @@ export async function updateStudentProfile(
     .update(payload)
     .eq("user_id", user.id)
     .select(
-      "user_id, email, full_name, phone, preference, profile_picture_url, bio"
+      "user_id, email, full_name, phone, preference, study_mode, profile_picture_url, bio"
     )
     .single();
 

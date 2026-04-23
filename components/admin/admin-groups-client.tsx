@@ -142,6 +142,7 @@ type UngroupedStudent = {
   email: string | null;
   phone: string | null;
   preference: "in_person" | "online" | "no_preference" | null;
+  study_mode: "group" | "independent";
   profile_picture_url: string | null;
 };
 
@@ -217,6 +218,12 @@ function getMemberProfile(member: GroupMember) {
 }
 
 function formatStudyMode(
+  studyMode: UngroupedStudent["study_mode"],
+) {
+  return studyMode === "independent" ? "Independent study" : "Group study";
+}
+
+function formatMeetingPreference(
   preference: UngroupedStudent["preference"] | Group["preference"],
 ) {
   switch (preference) {
@@ -266,9 +273,11 @@ function getDefaultCreateFormState(): CreateGroupFormState {
 export default function AdminGroupsClient({
   groups,
   ungroupedStudents,
+  independentStudents,
 }: {
   groups: Group[];
   ungroupedStudents: UngroupedStudent[];
+  independentStudents: UngroupedStudent[];
 }) {
   const router = useRouter();
 
@@ -754,7 +763,7 @@ export default function AdminGroupsClient({
                         {student.email ?? "No email"}
                       </p>
                       <p className="text-muted-foreground text-xs">
-                        {formatStudyMode(student.preference)}
+                        {formatMeetingPreference(student.preference)}
                       </p>
                     </div>
                   </label>
@@ -803,7 +812,7 @@ export default function AdminGroupsClient({
             </p>
             <p className="text-muted-foreground">
               {assigningStudent?.email ?? "No email"} •{" "}
-              {formatStudyMode(assigningStudent?.preference ?? "no_preference")}
+              {formatMeetingPreference(assigningStudent?.preference ?? "no_preference")}
             </p>
           </div>
         </div>
@@ -1499,6 +1508,7 @@ export default function AdminGroupsClient({
                 <TableHead className="px-4">Email</TableHead>
                 <TableHead className="px-4">Phone Number</TableHead>
                 <TableHead className="px-4">Study Mode</TableHead>
+                <TableHead className="px-4">Meeting Preference</TableHead>
                 <TableHead className="w-14 px-4 text-right">
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -1508,7 +1518,7 @@ export default function AdminGroupsClient({
               {ungroupedStudents.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-12 text-center text-muted-foreground"
                   >
                     No ungrouped students.
@@ -1554,7 +1564,10 @@ export default function AdminGroupsClient({
                       {student.phone ?? "No phone number"}
                     </TableCell>
                     <TableCell className="px-4 text-muted-foreground">
-                      {formatStudyMode(student.preference)}
+                      {formatStudyMode(student.study_mode)}
+                    </TableCell>
+                    <TableCell className="px-4 text-muted-foreground">
+                      {formatMeetingPreference(student.preference)}
                     </TableCell>
                     <TableCell className="px-4 text-right">
                       <DropdownMenu modal={false}>
@@ -1578,6 +1591,85 @@ export default function AdminGroupsClient({
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
+
+      <section className="space-y-4 pt-4">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-lg font-semibold leading-none">Independent Study</h2>
+          <p className="text-muted-foreground text-sm">
+            {independentStudents.length}{" "}
+            {independentStudents.length === 1 ? "student" : "students"}
+          </p>
+        </div>
+
+        <div className="border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/100">
+                <TableHead className="px-4">Full Name</TableHead>
+                <TableHead className="px-4">Email</TableHead>
+                <TableHead className="px-4">Phone Number</TableHead>
+                <TableHead className="px-4">Study Mode</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {independentStudents.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="px-4 py-12 text-center text-muted-foreground"
+                  >
+                    No independent-study students.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                independentStudents.map((student) => (
+                  <TableRow
+                    key={student.user_id}
+                    className="[&>td]:align-middle"
+                  >
+                    <TableCell className="px-4 align-middle">
+                      <div className="flex min-h-9 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-xs font-medium text-muted-foreground">
+                          {student.profile_picture_url ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={student.profile_picture_url}
+                                alt={student.full_name ?? "Student profile"}
+                                className="h-full w-full object-cover"
+                              />
+                            </>
+                          ) : (
+                            <span>{getInitials(student.full_name)}</span>
+                          )}
+                        </div>
+                        <span
+                          className={
+                            student.full_name
+                              ? "font-medium"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {student.full_name ?? "No name provided"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 text-muted-foreground">
+                      {student.email ?? "No email"}
+                    </TableCell>
+                    <TableCell className="px-4 text-muted-foreground">
+                      {student.phone ?? "No phone number"}
+                    </TableCell>
+                    <TableCell className="px-4 text-muted-foreground">
+                      {formatStudyMode(student.study_mode)}
                     </TableCell>
                   </TableRow>
                 ))

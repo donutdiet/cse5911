@@ -4,64 +4,148 @@
   Shows the student their assigned group. Fetches the group they belong to
   via the member_of table, then loads the other members from profile.
 
-  Three possible states:
-    1. Not in a group yet — shows a friendly message
-    2. In a group — shows meeting time, preference, and member list
+  Possible states:
+    1. Independent study — informational card, link to profile
+    2. Not in a group yet — friendly empty state
+    3. In a group — meeting details card + members card
 */
 
-import { createClient }  from '@/lib/supabase/server'
-import { redirect }      from 'next/navigation'
-import AvatarLightbox    from '@/components/student/avatar-lightbox'
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { BookOpen, Calendar, Clock, MapPin, Users, Video } from "lucide-react";
 
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+import AvatarLightbox from "@/components/student/avatar-lightbox";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
+
+const DAY_NAMES = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
 
 type GroupMember = {
-  user_id: string
-  full_name: string | null
-  email: string | null
-  phone: string | null
-  profile_picture_url: string | null
-  bio: string | null
-}
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  profile_picture_url: string | null;
+  bio: string | null;
+};
 
 function formatTime(timeString: string) {
-  const [hourStr, minStr] = timeString.split(':')
-  const hour   = parseInt(hourStr)
-  const ampm   = hour >= 12 ? 'PM' : 'AM'
-  const hour12 = hour % 12 || 12
-  return `${hour12}:${minStr} ${ampm}`
+  const [hourStr, minStr] = timeString.split(":");
+  const hour = parseInt(hourStr);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minStr} ${ampm}`;
+}
+
+function getInitials(name: string | null) {
+  if (!name) return "?";
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "?"
+  );
 }
 
 export default async function GroupPage() {
-  const supabase = await createClient()
+  const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  // find which group this student belongs to
-  const { data: membership } = await supabase
-    .from('member_of')
-    .select('group_id')
-    .eq('user_id', user.id)
-    .single()
+  const { data: profile, error: profileError } = await supabase
+    .from("profile")
+    .select("study_mode")
+    .eq("user_id", user.id)
+    .single();
 
-  // student has not been assigned to a group yet
-  if (!membership) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-3">
-        <h1 className="text-2xl font-semibold text-gray-900">Your Study Group</h1>
-        <p className="text-gray-500 text-sm">
-          You have not been assigned to a group yet. Groups are created by your
-          instructor after availability submissions close. Check back soon.
-        </p>
-      </div>
-    )
+  if (profileError) {
+    console.error("[student/group] profile fetch failed", {
+      userId: user.id,
+      error: profileError,
+    });
   }
 
-  // fetch the group details
+  if (profile?.study_mode === "independent") {
+    return (
+      <PageShell>
+        <Card>
+          <CardContent className="flex flex-col items-start gap-4 py-10 sm:flex-row sm:items-center">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+              <BookOpen className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 space-y-1">
+              <h2 className="text-base font-semibold">
+                You&apos;re in Independent Study
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                You won&apos;t be assigned to a study group. If you want to join
+                the grouping pool again, update your study mode from your
+                profile.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/student/profile">Change study mode</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  const { data: membership } = await supabase
+    .from("member_of")
+    .select("group_id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership) {
+    return (
+      <PageShell>
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <Users className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold">
+                You&apos;re not in a group yet
+              </h2>
+              <p className="max-w-md text-sm text-muted-foreground">
+                Groups are created by your instructor after availability
+                submissions close. Check back soon.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
   const { data: group, error: groupError } = await supabase
-    .from('group')
-    .select(`
+    .from("group")
+    .select(
+      `
       id,
       preference,
       day_of_week,
@@ -73,165 +157,224 @@ export default async function GroupPage() {
         building,
         room_number
       )
-    `)
-    .eq('id', membership.group_id)
-    .single()
+    `,
+    )
+    .eq("id", membership.group_id)
+    .single();
 
   if (groupError) {
-    console.error('[student/group] group fetch failed', {
+    console.error("[student/group] group fetch failed", {
       groupId: membership.group_id,
       userId: user.id,
       error: groupError,
-    })
+    });
   }
 
-  // fetch all members of this group with their profile info.
-  // Uses a SECURITY DEFINER RPC so we don't need a co-member RLS policy on
-  // member_of/profile. The function scopes results to groups the caller is in.
-  const { data: membersData, error: membersError } = await supabase
-    .rpc('get_my_group_members')
-  const members = (membersData ?? []) as GroupMember[]
+  const { data: membersData, error: membersError } = await supabase.rpc(
+    "get_my_group_members",
+  );
+  const members = (membersData ?? []) as GroupMember[];
 
   if (membersError) {
-    console.error('[student/group] members fetch failed', {
+    console.error("[student/group] members fetch failed", {
       groupId: membership.group_id,
       userId: user.id,
       error: membersError,
-    })
+    });
   }
 
   if (!group) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-500 text-sm">We couldn&apos;t load your group right now. Please try refreshing in a moment.</p>
-      </div>
-    )
+      <PageShell>
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="pt-6">
+            <p className="text-sm text-destructive">
+              We couldn&apos;t load your group right now. Please try refreshing
+              in a moment.
+            </p>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
   }
 
-  const meetingDay  = DAY_NAMES[group.day_of_week ?? 0]
-  const startTime   = formatTime(group.meet_start_time)
-  const endTime     = formatTime(group.meet_end_time)
-  const isOnline    = group.preference === 'online'
-  const room = Array.isArray(group.room) ? group.room[0] : group.room
-  const roomLabel = room ? `${room.building} ${room.room_number}` : 'To be announced'
+  const meetingDay = DAY_NAMES[group.day_of_week ?? 0];
+  const startTime = formatTime(group.meet_start_time);
+  const endTime = formatTime(group.meet_end_time);
+  const isOnline = group.preference === "online";
+  const room = Array.isArray(group.room) ? group.room[0] : group.room;
+  const roomLabel = room
+    ? `${room.building} ${room.room_number}`
+    : "To be announced";
+
+  const orderedMembers = [...members].sort((a, b) => {
+    if (a.user_id === user.id) return -1;
+    if (b.user_id === user.id) return 1;
+    return (a.full_name ?? "").localeCompare(b.full_name ?? "");
+  });
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Your Study Group</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Here is your assigned group and meeting details.
-        </p>
-      </div>
-
-      {/* meeting info card */}
-      <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
-        <h2 className="text-sm font-medium text-gray-700">Meeting Details</h2>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Day</p>
-            <p className="text-sm text-gray-800 mt-0.5">{meetingDay}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Time</p>
-            <p className="text-sm text-gray-800 mt-0.5">{startTime} to {endTime}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Format</p>
-            <p className="text-sm text-gray-800 mt-0.5">{isOnline ? 'Online' : 'In Person'}</p>
-          </div>
-          {!isOnline && (
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide">Location</p>
-              <p className="text-sm text-gray-800 mt-0.5">{roomLabel}</p>
+    <PageShell>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Meeting details</CardTitle>
+            <CardDescription>
+              Your weekly group meeting and how to find it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatBlock
+                icon={<Calendar className="h-4 w-4" />}
+                label="Day"
+                value={meetingDay ?? "—"}
+              />
+              <StatBlock
+                icon={<Clock className="h-4 w-4" />}
+                label="Time"
+                value={`${startTime} – ${endTime}`}
+              />
+              <StatBlock
+                icon={
+                  isOnline ? (
+                    <Video className="h-4 w-4" />
+                  ) : (
+                    <MapPin className="h-4 w-4" />
+                  )
+                }
+                label={isOnline ? "Format" : "Location"}
+                value={isOnline ? "Online" : roomLabel}
+              />
+              <StatBlock
+                icon={<Users className="h-4 w-4" />}
+                label="Members"
+                value={`${members.length} student${members.length === 1 ? "" : "s"}`}
+              />
             </div>
-          )}
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Members</p>
-            <p className="text-sm text-gray-800 mt-0.5">{members.length} students</p>
-          </div>
-        </div>
 
-        {!isOnline && group.room_overbooked && (
-          <p className="text-xs text-amber-700">
-            This meeting was created after room capacity was manually overridden.
-          </p>
-        )}
-      </div>
+            {!isOnline && group.room_overbooked ? (
+              <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                This meeting was created after room capacity was manually
+                overridden.
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
 
-      {/* members card */}
-      <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
-        <h2 className="text-sm font-medium text-gray-700">Group Members</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Group members</CardTitle>
+            <CardDescription>
+              Reach out anytime — you&apos;re studying together.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-0 sm:px-0">
+            {orderedMembers.length === 0 ? (
+              <p className="px-6 pb-2 text-sm text-muted-foreground">
+                No members found.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {orderedMembers.map((m) => {
+                  const isYou = m.user_id === user.id;
+                  const initials = getInitials(m.full_name);
 
-        {members.length === 0 ? (
-          <p className="text-sm text-gray-400">No members found.</p>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {members.map((m) => {
-              const isYou = m.user_id === user.id
-              const initials = (m.full_name ?? '?')
-                .split(' ')
-                .map((part) => part[0])
-                .filter(Boolean)
-                .slice(0, 2)
-                .join('')
-                .toUpperCase()
-
-              return (
-                <li key={m.user_id} className="py-4 flex items-start gap-4">
-                  {/* avatar */}
-                  <div className="flex-shrink-0">
-                    {m.profile_picture_url ? (
-                      <AvatarLightbox
-                        src={m.profile_picture_url}
-                        alt={m.full_name ?? 'Member'}
-                      />
-                    ) : (
-                      <div className="h-9 w-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-500">{initials}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* name / contact / bio */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {m.full_name ?? 'Unknown'}
-                      {isYou && (
-                        <span className="ml-2 text-xs text-[#BB0000] font-medium">You</span>
-                      )}
-                    </p>
-
-                    {(m.email || m.phone) && (
-                      <div className="mt-1 flex flex-col gap-0.5 text-xs text-gray-500">
-                        {m.email && (
-                          <span className="inline-flex items-center gap-1 truncate">
-                            <span className="text-gray-400 uppercase tracking-wide text-[10px]">Email</span>
-                            <span className="truncate">{m.email}</span>
-                          </span>
-                        )}
-                        {m.phone && (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="text-gray-400 uppercase tracking-wide text-[10px]">Phone</span>
-                            <span>{m.phone}</span>
-                          </span>
+                  return (
+                    <li
+                      key={m.user_id}
+                      className="flex items-start gap-4 px-6 py-4"
+                    >
+                      <div className="shrink-0">
+                        {m.profile_picture_url ? (
+                          <AvatarLightbox
+                            src={m.profile_picture_url}
+                            alt={m.full_name ?? "Member"}
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full border bg-muted">
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {initials}
+                            </span>
+                          </div>
                         )}
                       </div>
-                    )}
 
-                    {m.bio && (
-                      <p className="text-sm text-gray-600 mt-2 leading-relaxed">{m.bio}</p>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={cn(
+                              "truncate text-sm font-medium",
+                              !m.full_name && "text-muted-foreground",
+                            )}
+                          >
+                            {m.full_name ?? "Unknown"}
+                          </p>
+                          {isYou ? (
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                              You
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {m.email || m.phone ? (
+                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                            {m.email ? (
+                              <span className="truncate">{m.email}</span>
+                            ) : null}
+                            {m.phone ? <span>{m.phone}</span> : null}
+                          </div>
+                        ) : null}
+
+                        {m.bio ? (
+                          <p className="mt-2 text-sm leading-relaxed text-foreground/80">
+                            {m.bio}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
+    </PageShell>
+  );
+}
 
+function PageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
+      <header className="mb-6 text-center">
+        <h1 className="text-3xl font-bold tracking-tight">Your study group</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your assigned group, meeting schedule, and who you&apos;re studying
+          with.
+        </p>
+      </header>
+      {children}
     </div>
-  )
+  );
+}
+
+function StatBlock({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/20 p-4">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="mt-1.5 text-sm font-semibold text-foreground">{value}</p>
+    </div>
+  );
 }

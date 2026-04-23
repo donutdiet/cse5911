@@ -50,11 +50,12 @@ type Student = {
   phone: string | null;
   role: string;
   preference: "in_person" | "online" | "no_preference" | null;
+  study_mode: "group" | "independent";
   profile_picture_url: string | null;
   member_of?: MemberOfRow[] | null;
 };
 
-function formatStudyMode(preference: Student["preference"]) {
+function formatMeetingPreference(preference: Student["preference"]) {
   switch (preference) {
     case "in_person":
       return "In-person";
@@ -64,6 +65,10 @@ function formatStudyMode(preference: Student["preference"]) {
     default:
       return "No preference";
   }
+}
+
+function formatStudyMode(studyMode: Student["study_mode"]) {
+  return studyMode === "independent" ? "Independent study" : "Group study";
 }
 
 function getInitials(name: string | null) {
@@ -230,6 +235,7 @@ export function RosterTable({ students }: { students: Student[] }) {
               <TableHead className="px-4">Phone Number</TableHead>
               <TableHead className="px-4">Group</TableHead>
               <TableHead className="px-4">Study Mode</TableHead>
+              <TableHead className="px-4">Meeting Preference</TableHead>
               <TableHead className="w-14 px-4 text-right">
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -239,7 +245,7 @@ export function RosterTable({ students }: { students: Student[] }) {
             {actionError ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="p-3 text-center text-destructive"
                 >
                   {actionError}
@@ -249,7 +255,7 @@ export function RosterTable({ students }: { students: Student[] }) {
             {students.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="p-4 text-center text-muted-foreground"
                 >
                   No students found.
@@ -295,7 +301,12 @@ export function RosterTable({ students }: { students: Student[] }) {
                     {formatGroupLabel(getAssignedGroup(student))}
                   </TableCell>
                   <TableCell className="px-4 text-muted-foreground">
-                    {formatStudyMode(student.preference)}
+                    {formatStudyMode(student.study_mode)}
+                  </TableCell>
+                  <TableCell className="px-4 text-muted-foreground">
+                    {student.study_mode === "independent"
+                      ? "Not applicable"
+                      : formatMeetingPreference(student.preference)}
                   </TableCell>
                   <TableCell className="px-4 text-right">
                     <DropdownMenu modal={false}>
